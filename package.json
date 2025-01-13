@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "install:rust": "curl https://sh.rustup.rs -sSf | sh -s -- -y && . /tmp/cargo/env && cargo install wasm-pack",
-    "build:wasm": "wasm-pack build src-rs --target web --out-dir ./src/wasm",
-    "prebuild": "npm run install:rust && npm run build:wasm",
+    "build:wasm": "chmod +x src-rs/build.sh && bash src-rs/build.sh",
+    "prebuild": "chmod +x src-rs/build.sh && bash src-rs/build.sh",
     "build": "next build",
     "build:local": "next build",
     "start": "next start",
