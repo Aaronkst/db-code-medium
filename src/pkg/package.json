@@ -1,0 +1,15 @@
+{
+  "name": "src-rs",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "src_rs_bg.wasm",
+    "src_rs.js",
+    "src_rs.d.ts"
+  ],
+  "main": "src_rs.js",
+  "types": "src_rs.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
