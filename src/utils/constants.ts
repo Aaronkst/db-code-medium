@@ -51,3 +51,18 @@ export const getDefaultTable = (
     onDelete,
   };
 };
+
+// Monaco imports
+export const TYPEORM_IMPORTS = `import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm"`;

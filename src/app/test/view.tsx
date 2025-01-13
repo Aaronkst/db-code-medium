@@ -6,7 +6,8 @@ import React, { useEffect, useState } from "react";
 const App: React.FC = () => {
   const router = useRouter();
   const [result, setResult] = useState<number | null>(null);
-  const [wasmModule, setWasmModule] = useState<typeof import("@/pkg/src_rs")>();
+  const [wasmModule, setWasmModule] =
+    useState<typeof import("@/wasm/src_rs")>();
 
   useEffect(() => {
     console.log(window.location.hostname);
@@ -15,7 +16,7 @@ const App: React.FC = () => {
     const loadWasm = async () => {
       try {
         console.log("⏳ Loading WASM module...");
-        const wasm = await import("@/pkg/src_rs");
+        const wasm = await import("@/wasm/src_rs");
         console.log("✅ WASM module loaded:", wasm);
 
         const wasmPath = "wasm/src_rs_bg.wasm"; // Adjust as needed

@@ -18,7 +18,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
     let mut entity_code = format!("@Entity()\nexport class {} {{\n", table_name);
 
     for column in columns {
-        let column_name = column["name"].as_str().unwrap_or("");
+        let mut column_name = column["name"].as_str().unwrap_or("").to_string();
         let data_type = column["dataType"].as_str().unwrap_or("string");
         let is_nullable = column["nullable"].as_bool().unwrap_or(false);
         let is_primary = column["id"] == data["data"]["primaryKey"];
@@ -42,7 +42,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             column_decorator.push_str(", unique: true");
         }
 
-        column_decorator.push('}');
+        column_decorator.push_str("})");
 
         // Add primary key or auto increment if applicable
         if is_primary {
@@ -51,8 +51,14 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             column_decorator = "@PrimaryGeneratedColumn()".to_string();
         }
 
+        // Add data type for typescript support
+        column_name.push_str(&format!(": {}", data_type));
+
         // Generate the column definition
-        entity_code.push_str(&format!("    {} {}\n", column_decorator, column_name));
+        entity_code.push_str(&format!(
+            "    {} \n    {}\n\n",
+            column_decorator, column_name
+        ));
     }
 
     // Close the entity definition

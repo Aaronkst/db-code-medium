@@ -1,9 +1,11 @@
 "use client";
 
+import { JoinEditorModal } from "@/components/react-flow-custom/join-editor";
 import { TableNode } from "@/components/react-flow-custom/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
-import { getDefaultTable } from "@/utils/constants";
+import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
 import type { TableProps } from "@/utils/types/database-types";
+import { Editor, Monaco } from "@monaco-editor/react";
 import {
   addEdge,
   applyEdgeChanges,
@@ -19,12 +21,11 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { JoinEditorModal } from "./components/join-editor";
-import { debounce } from "lodash";
 
 const nodeTypes = {
   table: TableNode,
@@ -41,18 +42,19 @@ function App() {
   const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
   const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
   const [newJoinId, setNewJoinId] = useState<string | null>(null);
-  const [wasmModule, setWasmModule] = useState<typeof import("@/pkg/src_rs")>();
+  const [wasmModule, setWasmModule] =
+    useState<typeof import("@/wasm/src_rs")>();
   const [typeORMCode, setTypeORMCode] = useState<string>("");
 
   const debouncedCompile = useMemo(
     () =>
       debounce(
-        (wasm: typeof import("@/pkg/src_rs"), nodes: Node<TableProps>[]) => {
+        (wasm: typeof import("@/wasm/src_rs"), nodes: Node<TableProps>[]) => {
           console.log("⚒️ converting...", nodes);
           const _typeORMCode: string[] = nodes.map((node) =>
             wasm.convert_to_typeorm(JSON.stringify(node)),
           );
-          setTypeORMCode(_typeORMCode.join("\n\n"));
+          setTypeORMCode(`${TYPEORM_IMPORTS}\n\n${_typeORMCode.join("\n\n")}`);
         },
         500,
       ),
@@ -63,11 +65,10 @@ function App() {
     const loadWasm = async () => {
       try {
         console.log("⏳ Loading WASM module...");
-        const wasm = await import("@/pkg/src_rs");
+        const wasm = await import("@/wasm/src_rs");
         console.log("✅ WASM module loaded:", wasm);
 
-        const wasmPath = "wasm/src_rs_bg.wasm"; // Adjust as needed
-        await wasm.default(wasmPath);
+        await wasm.default();
 
         setWasmModule(wasm);
       } catch (e) {
@@ -144,12 +145,35 @@ function App() {
     ]);
   };
 
+  // monaco options
+  const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
+    try {
+      const response = await fetch(
+        "https://raw.githubusercontent.com/typeorm/typeorm/master/index.d.ts",
+      );
+      const typeORMDefs = await response.text();
+      // Configure TypeScript settings
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        target: monaco.languages.typescript.ScriptTarget.ES2020,
+        module: monaco.languages.typescript.ModuleKind.CommonJS,
+        allowJs: true,
+        strict: true,
+        noEmit: true,
+        typeRoots: ["node_modules/@types"],
+      });
+
+      // Add TypeORM type definitions to Monaco Editor
+      monaco.languages.typescript.typescriptDefaults.addExtraLib(
+        typeORMDefs,
+        "file:///node_modules/typeorm/index.d.ts", // Path for the definitions
+      );
+    } catch (err) {
+      console.log("monaco err:", err);
+    }
+  };
+
   return (
-    <PanelGroup
-      autoSaveId="example"
-      direction="horizontal"
-      className="flex-1 min-w-screen"
-    >
+    <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
       <Panel defaultSize={50} className="relative">
         <div className="flex absolute top-8 right-8 rounded-md p-1 z-10 dark:bg-neutral-800">
           <IconButton icon={<FilePlus size="0.9rem" />} onClick={appendNode} />
@@ -172,11 +196,16 @@ function App() {
         </div>
       </PanelResizeHandle>
       <Panel defaultSize={50}>
-        <code className="whitespace-pre-wrap">
-          {/* TODO: generate typeorm codes here */}
-          {/* {JSON.stringify(nodes, undefined, 4)} */}
-          {typeORMCode}
-        </code>
+        <div className="flex flex-col h-full">
+          <div>[TODO] Language: Typescript, Syntax: TypeORM</div>
+          <Editor
+            language="typescript"
+            value={typeORMCode}
+            theme="vs-dark"
+            onMount={handleEditorDidMount}
+            className="flex-1"
+          />
+        </div>
       </Panel>
       <JoinEditorModal
         isOpen={!!newJoinId}

@@ -2,7 +2,7 @@
 
 import type { ColumnProps, TableProps } from "@/utils/types/database-types";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
-import { Plus, Trash } from "lucide-react";
+import { Pencil, Plus, Trash } from "lucide-react";
 import { useMemo, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
 import { nanoid } from "nanoid";
@@ -42,34 +42,39 @@ export function TableNode({
     >
       <IconButton
         icon={<Trash size="0.9rem" color="white" />}
-        className="absolute -top-4 -right-4 bg-[tomato] hover:bg-red-700 dark:bg-[tomato] dark:hover:bg-red-700"
+        className="absolute -top-4 -right-4 bg-red-400 hover:bg-red-700"
         onClick={() => data.onDelete(id)}
       />
-      <div className="flex flex-col p-2 gap-2">
+      <div className="flex flex-col p-3 gap-3">
         <input
           type="text"
           value={data.name}
           onChange={(e) => data.onChange(id, { name: e.target.value })}
           autoFocus
-          className="nodrag dark:bg-neutral-600 p-2 ark:border-neutral-500"
+          className="nodrag dark:bg-neutral-600 p-2"
         />
         <hr />
         {data.columns.map((column, idx) => (
-          <input
-            key={idx}
-            type="text"
-            value={column.name}
-            onChange={(e) =>
-              data.onChange(id, {
-                columns: handleColumnChange(idx, { name: e.target.value }),
-              })
-            }
-            autoFocus
-            className="nodrag dark:bg-neutral-600 p-2 ark:border-neutral-500"
-          />
+          <div className="relative group" key={idx}>
+            <input
+              type="text"
+              value={column.name}
+              onChange={(e) =>
+                data.onChange(id, {
+                  columns: handleColumnChange(idx, { name: e.target.value }),
+                })
+              }
+              autoFocus
+              className="nodrag dark:bg-neutral-600 p-2"
+            />
+            <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
+              <IconButton icon={<Pencil size="0.8rem" />} />
+            </div>
+          </div>
         ))}
+        <hr />
         <IconButton
-          className="mt-1 nodrag"
+          className="nodrag"
           icon={<Plus size="0.9rem" />}
           onClick={() =>
             data.onChange(id, {
