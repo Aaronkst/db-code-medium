@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build:wasm": "wasm-pack build src-rs --target web --out-dir ../src/wasm",
-    "prebuild": "wasm-pack build src-rs --target web --out-dir ../src/wasm",
+    "install:rust": "curl https://sh.rustup.rs -sSf | sh -s -- -y && source $HOME/.cargo/env",
+    "build:wasm": "wasm-pack build src-rs --target web --out-dir ./src/wasm",
+    "prebuild": "npm run install:rust && npm run build:wasm",
     "build": "next build",
+    "build:local": "next build",
     "start": "next start",
+    "dev": "next dev",
     "lint": "next lint"
   },
   "dependencies": {

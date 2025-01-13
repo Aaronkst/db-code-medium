@@ -1,0 +1,9 @@
+{
+  "build": {
+    "env": {
+      "RUSTUP_HOME": "/tmp/rustup",
+      "CARGO_HOME": "/tmp/cargo",
+      "PATH": "/tmp/cargo/bin:$PATH"
+    }
+  }
+}
