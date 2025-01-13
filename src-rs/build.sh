@@ -22,9 +22,9 @@ cargo build
 echo "Building WebAssembly..."
 
 if ! command -v wasm-pack &> /dev/null; then
-  /tmp/cargo/bin/wasm-pack build --target web --out-dir ../src/wasm
+  /tmp/cargo/bin/wasm-pack build --target web --out-dir ../src/wasm --release
 else
-  wasm-pack build --target web --out-dir ../src/wasm
+  wasm-pack build --target web --out-dir ../src/wasm --release
 fi
 
 cd ..
