@@ -1,22 +1,26 @@
 import { Button } from "@/components/shared/buttons/button";
 import Modal from "@/components/shared/modals";
 import type { ColumnProps } from "@/utils/types/database-types";
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useContext, useState } from "react";
+import { IconButton } from "../shared/buttons/icon-button";
+import { EditorContext } from "@/lib/context/editor-context";
+import { X } from "lucide-react";
 
-type JoinEditorModalProps = {
+type ColumnEditorModalProps = {
   isOpen: boolean;
   onClose?: () => void;
-  onSubmit: (columnId: string, settings: ColumnProps) => void;
-  columnId: string;
+  onSubmit: (id: string, payload: ColumnProps) => void;
+  column: ColumnProps;
 };
 
-export function JoinEditorModal({
+export function ColumnEditorModal({
   isOpen,
   onClose,
   onSubmit,
-  columnId,
-}: JoinEditorModalProps) {
-  const [settings, setSettings] = useState<ColumnProps>();
+  column,
+}: ColumnEditorModalProps) {
+  const [settings, setSettings] = useState<ColumnProps>(column);
+  const { setEditingColumn } = useContext(EditorContext);
 
   const handleFormSubmit = useCallback(
     (e: FormEvent) => {
@@ -24,15 +28,19 @@ export function JoinEditorModal({
       // TODO: Build column settings here.
       // onSubmit(columnId, settings);
     },
-    [columnId, onSubmit, settings],
+    [column, onSubmit, settings],
   );
 
   return (
-    <Modal isOpen={isOpen && !!columnId} onClose={onClose} title="Edit Column">
-      <form onClick={handleFormSubmit} className="flex flex-col gap-2">
-        <span>// TODO: Build Settings Form here</span>
-        <Button type="submit" label="Save" />
-      </form>
-    </Modal>
+    <form onClick={handleFormSubmit} className="flex flex-col gap-2">
+      <div className="flex flex-row-reverse p-2">
+        <IconButton
+          icon={<X size="0.9rem" />}
+          onClick={() => setEditingColumn(null)}
+        />
+      </div>
+      <span>// TODO: Build Settings Form here</span>
+      <Button type="submit" label="Save" />
+    </form>
   );
 }

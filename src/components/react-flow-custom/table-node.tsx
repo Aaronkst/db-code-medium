@@ -3,10 +3,12 @@
 import type { ColumnProps, TableProps } from "@/utils/types/database-types";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
 import { Pencil, Plus, Trash } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
 import { nanoid } from "nanoid";
 import { getDefaultColumn } from "@/utils/constants";
+import { ColumnEditorModal } from "./column-editor";
+import { EditorContext } from "@/lib/context/editor-context";
 
 export type TableDataProps = TableProps & {
   onChange: (id: string, table: Partial<TableProps>) => void;
@@ -28,6 +30,7 @@ export function TableNode({
   };
 
   const [hovered, setHovered] = useState(false);
+  const { setEditingColumn } = useContext(EditorContext);
 
   const relations = useMemo(
     () => data.columns.filter((col) => !!col.foreignKey),
@@ -68,7 +71,10 @@ export function TableNode({
               className="nodrag dark:bg-neutral-600 p-2"
             />
             <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
-              <IconButton icon={<Pencil size="0.8rem" />} />
+              <IconButton
+                icon={<Pencil size="0.8rem" />}
+                onClick={() => setEditingColumn(column)}
+              />
             </div>
           </div>
         ))}

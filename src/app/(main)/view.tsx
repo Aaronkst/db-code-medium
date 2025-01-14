@@ -1,10 +1,12 @@
 "use client";
 
+import { ColumnEditorModal } from "@/components/react-flow-custom/column-editor";
 import { JoinEditorModal } from "@/components/react-flow-custom/join-editor";
 import { TableNode } from "@/components/react-flow-custom/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
+import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
-import type { TableProps } from "@/utils/types/database-types";
+import type { ColumnProps, TableProps } from "@/utils/types/database-types";
 import { Editor, Monaco } from "@monaco-editor/react";
 import {
   addEdge,
@@ -24,7 +26,7 @@ import "@xyflow/react/dist/style.css";
 import { debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
 import { nanoid } from "nanoid";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 const nodeTypes = {
@@ -45,6 +47,8 @@ function App() {
   const [wasmModule, setWasmModule] =
     useState<typeof import("@/wasm/src_rs")>();
   const [typeORMCode, setTypeORMCode] = useState<string>("");
+
+  const { editingColumn, setEditingColumn } = useContext(EditorContext);
 
   const debouncedCompile = useMemo(
     () =>
@@ -145,6 +149,8 @@ function App() {
     ]);
   };
 
+  const handleColumnEdits = (id: string, payload: ColumnProps) => {};
+
   // monaco options
   const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
     try {
@@ -174,7 +180,18 @@ function App() {
 
   return (
     <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
-      <Panel defaultSize={50} className="relative">
+      {editingColumn && (
+        <Panel defaultSize={15} maxSize={15} minSize={15}>
+          <ColumnEditorModal
+            isOpen
+            onClose={() => setEditingColumn(null)}
+            onSubmit={handleColumnEdits}
+            column={editingColumn}
+          />
+        </Panel>
+      )}
+
+      <Panel defaultSize={editingColumn ? 45 : 50} className="relative">
         <div className="flex absolute top-8 right-8 rounded-md p-1 z-10 dark:bg-neutral-800">
           <IconButton icon={<FilePlus size="0.9rem" />} onClick={appendNode} />
         </div>
@@ -195,7 +212,7 @@ function App() {
           <EllipsisVertical className="h-2.5 w-2.5" />
         </div>
       </PanelResizeHandle>
-      <Panel defaultSize={50}>
+      <Panel defaultSize={40}>
         <div className="flex flex-col h-full">
           <div>[TODO] Language: Typescript, Syntax: TypeORM</div>
           <Editor
