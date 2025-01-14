@@ -10,7 +10,7 @@ export function IconButton({ icon, className, ...props }: IconButtonProps) {
     <button
       {...props}
       className={classNames(
-        "flex justify-center items-center hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:bg-neutral-700 rounded-md p-2",
+        "flex justify-center items-center bg-neutra-100 hover:bg-neutral-200 dark:hover:bg-neutral-800 dark:bg-neutral-700 rounded-md p-2",
         className || "",
       )}
     >

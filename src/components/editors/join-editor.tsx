@@ -5,19 +5,19 @@ import { FormEvent, useCallback, useState } from "react";
 
 type BaseJoinProps = Omit<JoinProps, "edge">;
 
-type JoinEditorModalProps = {
+type JoinEditorProps = {
   isOpen: boolean;
   onClose?: () => void;
   onSubmit: (edgeId: string, settings: BaseJoinProps) => void;
   edgeId: string;
 };
 
-export function JoinEditorModal({
+export function JoinEditor({
   isOpen,
   onClose,
   onSubmit,
   edgeId,
-}: JoinEditorModalProps) {
+}: JoinEditorProps) {
   const [settings, setSettings] = useState<BaseJoinProps>({
     target: {
       table: "",

@@ -1,14 +1,13 @@
 "use client";
 
+import { EditorContext } from "@/lib/context/editor-context";
+import { getDefaultColumn } from "@/utils/constants";
 import type { ColumnProps, TableProps } from "@/utils/types/database-types";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
 import { Pencil, Plus, Trash } from "lucide-react";
+import { nanoid } from "nanoid";
 import { useContext, useMemo, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
-import { nanoid } from "nanoid";
-import { getDefaultColumn } from "@/utils/constants";
-import { ColumnEditorModal } from "./column-editor";
-import { EditorContext } from "@/lib/context/editor-context";
 
 export type TableDataProps = TableProps & {
   onChange: (id: string, table: Partial<TableProps>) => void;
@@ -41,7 +40,7 @@ export function TableNode({
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-800 dark:text-white"
+      className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white"
     >
       <IconButton
         icon={<Trash size="0.9rem" color="white" />}

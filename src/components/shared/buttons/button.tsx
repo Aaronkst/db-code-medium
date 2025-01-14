@@ -10,7 +10,7 @@ export function Button({ label, className, ...props }: ButtonProps) {
     <button
       {...props}
       className={classNames(
-        "flex justify-center items-center text-white bg-blue-500 hover:bg-blue-600 dark:hover:bg-neutral-800 dark:bg-neutral-700 rounded-md py-2 px-4",
+        "flex justify-center items-center text-white bg-blue-500 hover:bg-blue-600 rounded-md py-2 px-4",
         className || "",
       )}
     >

@@ -24,6 +24,7 @@ export type ColumnProps = {
     | "float"
     | "uuid"
     | "objectId"; // db types
+  primaryKey?: boolean;
   index: boolean;
   unique: boolean;
   nullable: boolean;
