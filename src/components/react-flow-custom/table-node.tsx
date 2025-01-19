@@ -19,7 +19,7 @@ export function TableNode({
   data,
 }: NodeProps<Node<TableDataProps, "tableData">>) {
   const handleColumnChange = (idx: number, payload: Partial<ColumnProps>) => {
-    // TODO: transform payload here if necessary
+    // Transform payload here if necessary
     const columns = [...data.columns];
     columns.splice(idx, 1, {
       ...columns[idx],
@@ -83,7 +83,7 @@ export function TableNode({
           icon={<Plus size="0.9rem" />}
           onClick={() =>
             data.onChange(id, {
-              columns: [...data.columns, getDefaultColumn(nanoid())],
+              columns: [...data.columns, getDefaultColumn(nanoid(), id)],
             })
           }
         />

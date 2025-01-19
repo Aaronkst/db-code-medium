@@ -4,13 +4,15 @@ import { nanoid } from "nanoid";
 
 export const getDefaultColumn = (
   id: string,
-  name?: string,
-  dbName?: string,
+  tableId: string,
+  columnProps?: Partial<ColumnProps>,
 ): ColumnProps => ({
   id,
-  name: name || "",
-  dbName: dbName || name || "",
+  table: tableId,
+  name: "",
+  dbName: "",
   dataType: "string",
+  primaryKey: false,
   index: false,
   unique: false,
   nullable: false,
@@ -22,6 +24,7 @@ export const getDefaultColumn = (
   description: "",
   autoIncrement: false,
   foreignKey: null,
+  ...columnProps,
 });
 
 /**
@@ -45,7 +48,13 @@ export const getDefaultTable = (
     description: "",
     timestamps: true,
     engine: "InnoDB", // for MySQL only
-    columns: [getDefaultColumn(id, "id", "id")],
+    columns: [
+      getDefaultColumn(colId, id, {
+        name: "id",
+        dbName: "id",
+        primaryKey: true,
+      }),
+    ],
     joins: [],
     onChange,
     onDelete,

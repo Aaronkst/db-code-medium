@@ -46,7 +46,7 @@ const nodeTypes = {
 
 type AppProps = {
   // TODO: App settings; types.ts?
-  dbType: string; // TODO: use a enum later.
+  dbType: string; // TODO: use string types later.
   nodes: Node<TableProps>[];
   edges: Edge<TableProps>[];
 };
@@ -79,11 +79,17 @@ function App() {
     () =>
       debounce(
         (wasm: typeof import("@/wasm/src_rs"), nodes: Node<TableProps>[]) => {
-          console.log("⚒️ converting...", nodes);
-          const _typeORMCode: string[] = nodes.map((node) =>
-            wasm.convert_to_typeorm(JSON.stringify(node)),
-          );
-          setTypeORMCode(`${TYPEORM_IMPORTS}\n\n${_typeORMCode.join("\n\n")}`);
+          try {
+            console.log("⚒️ converting...", nodes);
+            const _typeORMCode: string[] = nodes.map((node) =>
+              wasm.convert_to_typeorm(JSON.stringify(node)),
+            );
+            setTypeORMCode(
+              `${TYPEORM_IMPORTS}\n\n${_typeORMCode.join("\n\n")}`,
+            );
+          } catch (e) {
+            console.log("⚠️ wasm error:", e);
+          }
         },
         500,
       ),
@@ -174,7 +180,40 @@ function App() {
     ]);
   };
 
-  const handleColumnEdits = (id: string, payload: ColumnProps) => {};
+  const handleColumnEdits = (id: string, payload: ColumnProps) => {
+    try {
+      setEditingColumn(payload);
+
+      const nds = [...nodes];
+
+      const node = nds.find((_node) => _node.id === payload.table);
+      if (!node) return nds;
+
+      let columns = [...node.data.columns];
+
+      columns = columns.map((col) => {
+        if (col.id !== id) return col;
+        return payload;
+      });
+
+      if (payload.primaryKey) node.data.primaryKey = id;
+
+      applyNodeChanges<Node<TableProps>>(
+        [
+          {
+            id,
+            type: "replace",
+            item: { ...node, data: { ...node.data, columns: columns } },
+          },
+        ],
+        nds,
+      );
+
+      setNodes(nds);
+    } catch (err) {
+      console.error("Could not update column");
+    }
+  };
 
   // monaco options
   const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
@@ -212,12 +251,7 @@ function App() {
       >
         <div className="max-h-screen overflow-y-scroll">
           {editingColumn && (
-            <ColumnEditor
-              isOpen
-              onClose={() => setEditingColumn(null)}
-              onSubmit={handleColumnEdits}
-              column={editingColumn}
-            />
+            <ColumnEditor onSubmit={handleColumnEdits} column={editingColumn} />
           )}
         </div>
       </Panel>
@@ -242,11 +276,12 @@ function App() {
           <Controls />
         </ReactFlow>
       </Panel>
-      <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-800 flex justify-center items-center">
+      {/* TODO: fix */}
+      {/* <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-800 flex justify-center items-center">
         <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm">
           <EllipsisVertical className="h-2.5 w-2.5" />
         </div>
-      </PanelResizeHandle>
+      </PanelResizeHandle> */}
       <Panel
         defaultSize={50}
         className="duration-500 ease-in-out"

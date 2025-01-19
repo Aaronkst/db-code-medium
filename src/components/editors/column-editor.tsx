@@ -1,37 +1,19 @@
 import { EditorContext } from "@/lib/context/editor-context";
 import type { ColumnProps } from "@/utils/types/database-types";
 import { X } from "lucide-react";
-import { FormEvent, useCallback, useContext, useState } from "react";
+import { FormEvent, useCallback, useContext, useEffect, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
 
 type ColumnEditorProps = {
-  isOpen: boolean;
-  onClose?: () => void;
   onSubmit: (id: string, payload: ColumnProps) => void;
   column: ColumnProps;
 };
 
-export function ColumnEditor({
-  isOpen,
-  onClose,
-  onSubmit,
-  column,
-}: ColumnEditorProps) {
-  const [settings, setSettings] = useState<ColumnProps>(column);
+export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
   const { setEditingColumn } = useContext(EditorContext);
 
-  const handleFormSubmit = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
-      console.log("form on change");
-      // TODO: Build column settings here.
-      // onSubmit(columnId, settings);
-    },
-    [column, onSubmit, settings],
-  );
-
   return (
-    <form onChange={handleFormSubmit} className="flex flex-col gap-3 p-2">
+    <form className="flex flex-col gap-3 p-2">
       <div className="flex justify-between">
         <span className="text-xl">Column Editor</span>
         <IconButton
@@ -45,9 +27,9 @@ export function ColumnEditor({
       <input
         id="column-name"
         type="text"
-        value={settings.name}
+        value={column.name}
         onChange={(e) =>
-          setSettings((prev) => ({ ...prev, name: e.target.value }))
+          onSubmit(column.id, { ...column, name: e.target.value })
         }
         className="dark:bg-neutral-600 p-2"
       />
@@ -55,12 +37,12 @@ export function ColumnEditor({
       <label htmlFor="column-data-type">Data Type</label>
       <select
         id="column-data-type"
-        value={settings.dataType}
+        value={column.dataType}
         onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev,
+          onSubmit(column.id, {
+            ...column,
             dataType: e.target.value as ColumnProps["dataType"],
-          }))
+          })
         }
         className="dark:bg-neutral-600 p-2"
       >
@@ -70,65 +52,93 @@ export function ColumnEditor({
         <option value="json">JSON</option>
       </select>
 
-      {/* TODO: fix checkbox */}
+      <div className="flex gap-2">
+        <input
+          id="column-primary-key"
+          type="checkbox"
+          checked={!!column.primaryKey}
+          onChange={() =>
+            onSubmit(column.id, { ...column, primaryKey: !column.primaryKey })
+          }
+        />
+        <label htmlFor="column-primary-key">Primary Key</label>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          id="column-unique"
+          type="checkbox"
+          checked={!!column.unique}
+          onChange={() =>
+            onSubmit(column.id, { ...column, unique: !column.unique })
+          }
+        />
+        <label htmlFor="column-unique">Unique</label>
+      </div>
+
       <div className="flex gap-2">
         <input
           id="column-index"
           type="checkbox"
-          checked={settings.index}
+          checked={!!column.index}
           onChange={() =>
-            setSettings((prev) => ({ ...prev, index: !prev.index }))
+            onSubmit(column.id, { ...column, index: !column.index })
           }
         />
         <label htmlFor="column-index">Index</label>
       </div>
 
-      <label htmlFor="column-default-value">Default Value</label>
-      <input
-        id="column-default-value"
-        type="text"
-        value={settings.defaultValue?.toString() || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({ ...prev, defaultValue: e.target.value }))
-        }
-        className="dark:bg-neutral-600 p-2"
-      />
+      {!column.primaryKey && !column.autoIncrement && !column.unique && (
+        <>
+          <label htmlFor="column-default-value">Default Value</label>
+          <input
+            id="column-default-value"
+            type="text"
+            value={column.defaultValue?.toString() || ""}
+            onChange={(e) =>
+              onSubmit(column.id, { ...column, defaultValue: e.target.value })
+            }
+            className="dark:bg-neutral-600 p-2"
+          />
+        </>
+      )}
 
       <label htmlFor="column-length">Length</label>
       <input
         id="column-length"
         type="number"
-        value={settings.length}
+        value={column.length}
         onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev,
+          onSubmit(column.id, {
+            ...column,
             length: parseInt(e.target.value || "0"),
-          }))
+          })
         }
         className="dark:bg-neutral-600 p-2"
       />
 
-      {settings.dataType === "float" && (
+      {column.dataType === "float" && (
         <>
           <label htmlFor="column-precision">Precision</label>
           <input
             id="column-precision"
             type="number"
-            value={settings.precision || 0}
+            value={column.precision || 0}
             onChange={(e) =>
-              setSettings((prev) => ({
-                ...prev,
+              onSubmit(column.id, {
+                ...column,
                 precision: parseInt(e.target.value || "0"),
-              }))
+              })
             }
             className="dark:bg-neutral-600 p-2"
           />
         </>
       )}
       <hr />
-      {/* Foreign key settings. */}
+      {/* TODO: Foreign key column. */}
+
       <code className="text-xs text-neutral-700 dark:text-neutral-400">
-        {settings.id}
+        {column.id}
       </code>
     </form>
   );

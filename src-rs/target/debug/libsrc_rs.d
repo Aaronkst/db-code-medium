@@ -1,1 +1,1 @@
-/home/aaron/Documents/db-code-medium/src-rs/target/debug/libsrc_rs.so: /home/aaron/Documents/db-code-medium/src-rs/src/lib.rs
+/Users/heinhtet/Projects/personal/db-code-medium/src-rs/target/debug/libsrc_rs.dylib: /Users/heinhtet/Projects/personal/db-code-medium/src-rs/src/lib.rs

@@ -14,6 +14,7 @@ export type TableProps = {
 
 export type ColumnProps = {
   id: string;
+  table: string;
   name: string;
   dbName: string; // underscore or pascal transformation of name
   dataType:
@@ -24,7 +25,7 @@ export type ColumnProps = {
     | "float"
     | "uuid"
     | "objectId"; // db types
-  primaryKey?: boolean;
+  primaryKey: boolean;
   index: boolean;
   unique: boolean;
   nullable: boolean;
