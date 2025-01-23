@@ -8,6 +8,7 @@ import {
   ALargeSmall,
   Braces,
   Calendar,
+  ChevronRight,
   FileDigit,
   Hash,
   Key,
@@ -31,6 +32,8 @@ export function TableNode({
   id,
   data,
 }: NodeProps<Node<TableDataProps, "tableData">>) {
+  const [expanded, setExpanded] = useState<boolean>(true);
+
   const handleColumnChange = (idx: number, payload: Partial<ColumnProps>) => {
     // Transform payload here if necessary
     const columns = [...data.columns];
@@ -41,7 +44,6 @@ export function TableNode({
     return columns;
   };
 
-  const [hovered, setHovered] = useState(false);
   const { setEditingColumn } = useContext(EditorContext);
 
   const relations = useMemo(
@@ -50,9 +52,9 @@ export function TableNode({
   );
 
   const renderIcon = useCallback((column: ColumnProps): ReactNode => {
-    if (column.primaryKey) return <Key size="0.9rem" />;
-    if (column.index) return <Search size="0.9rem" />;
-    if (column.unique) return <Star size="0.9rem" />;
+    if (column.primaryKey) return <Key className="mx-1" size="0.9rem" />;
+    if (column.index) return <Search className="mx-1" size="0.9rem" />;
+    if (column.unique) return <Star className="mx-1" size="0.9rem" />;
     return "";
   }, []);
 
@@ -85,70 +87,90 @@ export function TableNode({
   }, []);
 
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white"
-    >
+    <div className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white group">
       <IconButton
         icon={<Trash size="0.9rem" color="white" />}
-        className="absolute -top-4 -right-4 bg-red-400 hover:bg-red-700"
+        className="group-hover:block hidden absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-full"
         onClick={() => data.onDelete(id)}
       />
-      <div className="flex flex-col p-3 gap-3">
-        <input
-          type="text"
-          value={data.name}
-          onChange={(e) => data.onChange(id, { name: e.target.value })}
-          autoFocus
-          className="nodrag dark:bg-neutral-600 p-2"
-        />
-        <hr />
-        {data.columns.map((column, idx) => (
-          <div className="flex items-center gap-1" key={idx}>
-            <span className="px-1">{renderIcon(column)}</span>
-            <div className="flex-1 flex items-stretch nodrag dark:bg-neutral-600 w-full px-2 rounded-md">
-              <label
-                htmlFor={"column-name-input-" + idx}
-                className="px-1 flex items-center"
-              >
-                {renderDatatypeIcon(column)}
-              </label>
-              <div className="relative group flex-1">
-                <input
-                  id={"column-name-input-" + idx}
-                  type="text"
-                  value={column.name}
-                  onChange={(e) =>
-                    data.onChange(id, {
-                      columns: handleColumnChange(idx, {
-                        name: e.target.value,
-                      }),
-                    })
-                  }
-                  autoFocus
-                  className="p-2 bg-transparent"
-                />
-                <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
-                  <IconButton
-                    icon={<Pencil size="0.8rem" />}
-                    onClick={() => setEditingColumn(column)}
-                  />
+      <div className="p-3 overflow-hidden">
+        <div className="flex gap-1 z-20">
+          <input
+            type="text"
+            value={data.name}
+            onChange={(e) => data.onChange(id, { name: e.target.value })}
+            autoFocus
+            className="nodrag dark:bg-neutral-600 p-2 flex-1"
+          />
+          <IconButton
+            icon={
+              <ChevronRight
+                size="0.9rem"
+                className="duration-500 ease-in-out"
+                style={{
+                  transform: `rotate(${expanded ? "90deg" : "0deg"})`,
+                }}
+              />
+            }
+            onClick={() => setExpanded(!expanded)}
+          />
+        </div>
+        <div
+          className={`duration-500 ease-in-out z-0 mt-3 transition-all nowheel ${
+            expanded
+              ? "max-h-[500px] overflow-y-auto"
+              : "max-h-0 overflow-hidden"
+          }`}
+        >
+          <div className="flex flex-col gap-3">
+            <hr />
+            {data.columns.map((column, idx) => (
+              <div className="flex items-center gap-1" key={idx}>
+                <span>{renderIcon(column)}</span>
+                <div className="flex-1 flex items-stretch nodrag dark:bg-neutral-600 w-full px-2 rounded-md">
+                  <label
+                    htmlFor={"column-name-input-" + idx}
+                    className="px-1 flex items-center"
+                  >
+                    {renderDatatypeIcon(column)}
+                  </label>
+                  <div className="relative group flex-1">
+                    <input
+                      id={"column-name-input-" + idx}
+                      type="text"
+                      value={column.name}
+                      onChange={(e) =>
+                        data.onChange(id, {
+                          columns: handleColumnChange(idx, {
+                            name: e.target.value,
+                          }),
+                        })
+                      }
+                      autoFocus
+                      className="p-2 bg-transparent"
+                    />
+                    <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
+                      <IconButton
+                        icon={<Pencil size="0.8rem" />}
+                        onClick={() => setEditingColumn(column)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
+            <hr />
+            <IconButton
+              className="nodrag"
+              icon={<Plus size="0.9rem" />}
+              onClick={() =>
+                data.onChange(id, {
+                  columns: [...data.columns, getDefaultColumn(nanoid(), id)],
+                })
+              }
+            />
           </div>
-        ))}
-        <hr />
-        <IconButton
-          className="nodrag"
-          icon={<Plus size="0.9rem" />}
-          onClick={() =>
-            data.onChange(id, {
-              columns: [...data.columns, getDefaultColumn(nanoid(), id)],
-            })
-          }
-        />
+        </div>
       </div>
       {relations.map((col, idx) => (
         <Handle
