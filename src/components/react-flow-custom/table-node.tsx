@@ -34,6 +34,15 @@ export function TableNode({
 }: NodeProps<Node<TableDataProps, "tableData">>) {
   const [expanded, setExpanded] = useState<boolean>(true);
 
+  const joinTargets = useMemo(
+    () => data.joins.filter((join) => !!join.target),
+    [data.joins],
+  );
+  const joinSources = useMemo(
+    () => data.joins.filter((join) => !!join.source),
+    [data.joins],
+  );
+
   const handleColumnChange = (idx: number, payload: Partial<ColumnProps>) => {
     // Transform payload here if necessary
     const columns = [...data.columns];
@@ -45,11 +54,6 @@ export function TableNode({
   };
 
   const { setEditingColumn } = useContext(EditorContext);
-
-  const relations = useMemo(
-    () => data.columns.filter((col) => !!col.foreignKey),
-    [data.columns],
-  );
 
   const renderIcon = useCallback((column: ColumnProps): ReactNode => {
     if (column.primaryKey) return <Key className="mx-1" size="0.9rem" />;
@@ -172,26 +176,39 @@ export function TableNode({
           </div>
         </div>
       </div>
-      {relations.map((col, idx) => (
+      {joinTargets.map((join, idx) => (
         <Handle
-          type="target"
+          key={id + "-source-" + idx}
+          type="source" // target other sources from this node
+          position={Position.Right}
+          id={id + "-source-" + idx}
+          style={{ top: 20 + (idx + 2) * 10 }}
+          isConnectable={false}
+        />
+      ))}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={id + "-source-" + joinTargets.length}
+        style={{ top: 30 }}
+        isConnectable
+      />
+
+      {joinSources.map((join, idx) => (
+        <Handle
+          key={id + "-target-" + idx}
+          type="target" // other source will target this node
           position={Position.Left}
-          id={id + "-" + idx}
-          style={{ top: (idx + 2) * 10 }}
+          id={id + "-target-" + idx}
+          style={{ top: 20 + (idx + 2) * 10 }}
           isConnectable={false}
         />
       ))}
       <Handle
         type="target"
         position={Position.Left}
-        id={id + "-" + relations.length}
-        style={{ top: 10 }}
-        isConnectable
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={id + "-target-" + relations.length}
+        id={id + "-target-" + joinSources.length}
+        style={{ top: 30 }}
         isConnectable
       />
     </div>

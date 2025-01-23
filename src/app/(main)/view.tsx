@@ -5,7 +5,11 @@ import { TableNode } from "@/components/react-flow-custom/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
 import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
-import type { ColumnProps, TableProps } from "@/utils/types/database-types";
+import type {
+  ColumnProps,
+  JoinProps,
+  TableProps,
+} from "@/utils/types/database-types";
 import { Editor, Monaco } from "@monaco-editor/react";
 import {
   addEdge,
@@ -22,7 +26,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { debounce } from "lodash";
+import { cloneDeep, debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
@@ -54,21 +58,23 @@ type AppProps = {
 function App() {
   const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
   const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
-  const [newJoinId, setNewJoinId] = useState<string | null>(null);
   const [wasmModule, setWasmModule] =
     useState<typeof import("@/wasm/src_rs")>();
   const [typeORMCode, setTypeORMCode] = useState<string>("");
 
-  // editing pane controllers
-  const { editingColumn } = useContext(EditorContext);
+  const { editingJoin, setEditingJoin, editingColumn } =
+    useContext(EditorContext);
 
+  // editing pane controllers
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const nodePanelRef = useRef<ImperativePanelHandle>(null);
   const codePanelRef = useRef<ImperativePanelHandle>(null);
 
   // add more conditions as more editors are added.
+  // TODO: table editor
   const showEditingPane = useMemo(() => !!editingColumn, [editingColumn]);
 
+  // code compilers
   useEffect(() => {
     editorPanelRef.current?.resize(showEditingPane ? 15 : 0);
     nodePanelRef.current?.resize(showEditingPane ? 45 : 50);
@@ -81,7 +87,39 @@ function App() {
         (wasm: typeof import("@/wasm/src_rs"), nodes: Node<TableProps>[]) => {
           try {
             console.log("⚒️ converting...", nodes);
-            const _typeORMCode: string[] = nodes.map((node) =>
+
+            let parsedNodes = cloneDeep(nodes);
+
+            parsedNodes = parsedNodes.map((node) => {
+              if (!node.data.joins.length) return node;
+              const columns = node.data.columns.map((col) => {
+                if (!col.foreignKey?.target) return col;
+                const targetTable = nodes.find(
+                  (targetNode) =>
+                    targetNode.id === col.foreignKey?.target?.table,
+                );
+                if (!targetTable) return col;
+                const targetColumn = targetTable.data.columns.find(
+                  (targetCol) =>
+                    targetCol.id === col.foreignKey?.target?.column,
+                );
+                if (!targetColumn) return col;
+                return {
+                  ...col,
+                  foreignKey: {
+                    ...col.foreignKey,
+                    target: {
+                      ...col.foreignKey.target,
+                      tableName: targetTable.data.name || targetTable.data.id,
+                      columnName: targetColumn.name || targetColumn.id,
+                    },
+                  },
+                };
+              });
+              return { ...node, data: { ...node.data, columns } };
+            });
+
+            const _typeORMCode: string[] = parsedNodes.map((node) =>
               wasm.convert_to_typeorm(JSON.stringify(node)),
             );
             setTypeORMCode(
@@ -122,20 +160,6 @@ function App() {
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
     [],
   );
-  const onEdgesChange: OnEdgesChange<Edge<TableProps>> = useCallback(
-    (changes) => {
-      console.log("changes:", changes);
-      setEdges((eds) => applyEdgeChanges(changes, eds));
-    },
-    [],
-  );
-  const onConnect: OnConnect = useCallback((params) => {
-    console.log(params);
-    setEdges((eds) => addEdge(params, eds));
-    setNewJoinId(
-      `xy-edge__${params.source}${params.sourceHandle}${params.target}${params.targetHandle}`,
-    );
-  }, []);
 
   // custom node crud
   const removeNode = (id: string) => {
@@ -213,6 +237,122 @@ function App() {
     });
   }, [editingColumn]);
 
+  // edge manipulators
+  const onEdgesChange: OnEdgesChange<Edge<TableProps>> = useCallback(
+    (changes) => {
+      const change = changes[0];
+
+      console.log(change);
+
+      if (change?.type === "select" && change?.selected) {
+        let join: JoinProps | null = null;
+
+        const id = (change?.id || "").replace("xy-edge__", "");
+
+        for (const node of nodes) {
+          const findJoin = node.data.joins
+            .filter((join) => !join.source)
+            .find((join) => join.id === id);
+          if (findJoin) {
+            join = findJoin;
+            break;
+          }
+        }
+
+        setEditingJoin(join); // open modal on selecting an edge.
+      }
+
+      setEdges((eds) => applyEdgeChanges(changes, eds));
+    },
+    [nodes],
+  );
+  const onConnect: OnConnect = useCallback((connection) => {
+    let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
+    const baseEdgeId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
+
+    setNodes((nds) => {
+      const sourceNode = nds.find((node) => node.id === connection.source);
+      const targetNode = nds.find((node) => node.id === connection.target);
+      if (!sourceNode || !targetNode) return nds;
+
+      // TODO: find if these tables already join each other and if so, reuse the same edge id.
+
+      applyEdgeEffects = true;
+
+      return applyNodeChanges<Node<TableProps>>(
+        [
+          {
+            id: sourceNode.id,
+            type: "replace",
+            item: {
+              ...sourceNode,
+              data: {
+                ...sourceNode.data,
+                joins: [
+                  ...sourceNode.data.joins,
+                  {
+                    id: baseEdgeId,
+                    target: {
+                      table: connection.target,
+                      column:
+                        targetNode.data.columns.find(
+                          (col) => col.primaryKey || col.unique,
+                        )?.id || "",
+                    },
+                    source: null,
+                    onDelete: "CASCADE",
+                    onUpdate: "CASCADE",
+                    through: null,
+                    type: "one-to-one",
+                  },
+                ],
+              },
+            },
+          },
+          {
+            id: targetNode.id,
+            type: "replace",
+            item: {
+              ...targetNode,
+              data: {
+                ...targetNode.data,
+                joins: [
+                  ...targetNode.data.joins,
+                  {
+                    id: baseEdgeId,
+                    target: null,
+                    source: connection.source,
+                    onDelete: "CASCADE",
+                    onUpdate: "CASCADE",
+                    through: null,
+                    type: "one-to-one",
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        nds,
+      );
+    });
+
+    if (!applyEdgeEffects) return;
+
+    setEdges((eds) => addEdge(connection, eds));
+    setEditingJoin({
+      id: baseEdgeId,
+      target: {
+        table: connection.target,
+        column: "",
+      },
+      source: null,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+      through: null,
+      type: "one-to-one",
+    });
+  }, []);
+
   // monaco options.
   const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
     try {
@@ -248,7 +388,7 @@ function App() {
         ref={editorPanelRef}
       >
         <div className="max-h-screen overflow-y-scroll">
-          {editingColumn && <ColumnEditor />}
+          <ColumnEditor />
         </div>
       </Panel>
 
@@ -287,11 +427,7 @@ function App() {
           />
         </div>
       </Panel>
-      <JoinEditor
-        isOpen={!!newJoinId}
-        onSubmit={(edgeId, settings) => {}}
-        edgeId={newJoinId || ""}
-      />
+      <JoinEditor nodes={nodes} setNodes={setNodes} setEdges={setEdges} />
     </PanelGroup>
   );
 }

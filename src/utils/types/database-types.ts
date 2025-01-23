@@ -1,4 +1,8 @@
-import type { Edge } from "@xyflow/react";
+export type JoinTypes =
+  | "one-to-many"
+  | "one-to-one"
+  | "many-to-many"
+  | "many-to-one";
 
 export type TableProps = {
   id: string;
@@ -36,25 +40,22 @@ export type ColumnProps = {
   collation: string;
   description: string;
   autoIncrement: boolean; // defaults false
-  foreignKey: {
-    id: string; // removed "xy-edge__"
-    target: {
-      table: string; // table id
-      column: string; // column id
-    };
-    onDelete: "CASCADE" | "SET NULL" | "RESTRICT";
-    onUpdate: "CASCADE" | "SET NULL" | "RESTRICT";
-  } | null;
+  foreignKey: JoinProps | null;
 };
 
 export type JoinProps = {
-  edge: Edge;
+  id: string; // removed "xy-edge__"
+  // target: where to get the foreign key from.
   target: {
     table: string; // table id
+    tableName?: string; // parse on runtime
     column: string; // column id, left join on. etc...
-  };
+    columnName?: string; // parse on runtime
+  } | null;
   onDelete: "CASCADE" | "SET NULL" | "RESTRICT";
   onUpdate: "CASCADE" | "SET NULL" | "RESTRICT";
   through: string | null; // Join table for many-to-many
-  type: "one-to-many" | "one-to-one" | "many-to-many";
+  // source: which node is referencing the current node's columns.
+  source: string | null;
+  type: JoinTypes;
 };
