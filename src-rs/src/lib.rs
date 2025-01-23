@@ -1,6 +1,6 @@
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
+// use web_sys::console;
 
 #[wasm_bindgen]
 pub fn add_numbers(a: i32, b: i32) -> i32 {
@@ -32,12 +32,12 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
         let precision = column["precision"].as_u64().unwrap_or(0);
         let scale = column["scale"].as_u64().unwrap_or(0);
 
-        // Convert the column object to a JSON string
-        let column_json = serde_json::to_string_pretty(column)
-            .unwrap_or_else(|_| "Failed to serialize column".to_string());
+        // // Convert the column object to a JSON string
+        // let column_json = serde_json::to_string_pretty(column)
+        //     .unwrap_or_else(|_| "Failed to serialize column".to_string());
 
-        // Log the JSON string to the console
-        console::log_1(&column_json.into());
+        // // Log the JSON string to the console
+        // console::log_1(&column_json.into());
 
         // Check for foreign key
         let foreign_key = column["foreignKey"].as_object();
@@ -57,22 +57,41 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 
         if let Some(fk) = foreign_key {
             // Extract foreign key details
-            let target_table = fk["target"]["table"].as_str().unwrap_or("");
-            let target_column = fk["target"]["column"].as_str().unwrap_or("");
+            let target_table = fk["target"]["tableName"].as_str().unwrap_or("");
+            let target_column = fk["target"]["columnName"].as_str().unwrap_or("");
             let on_delete = fk["onDelete"].as_str().unwrap_or("SET NULL");
             let on_update = fk["onUpdate"].as_str().unwrap_or("CASCADE");
+            let mut join_type = fk["type"].as_str().unwrap_or("");
 
-            // Relationship decorator
-            column_decorator.push_str(&format!(
-                "@ManyToOne(() => {}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                target_table, on_delete, on_update
-            ));
+            if join_type == "one-to-one" {
+                join_type = "OneToOne"
+            }
+            if join_type == "one-to-many" {
+                join_type = "OneToMany"
+            }
+            if join_type == "many-to-one" {
+                join_type = "ManyToOne"
+            }
 
-            // Join column
-            column_decorator.push_str(&format!(
-                "@JoinColumn({{ name: \"{}\", referencedColumnName: \"{}\" }})",
-                db_name, target_column
-            ));
+            if join_type != "many-to-many" {
+                // Join column options
+                column_decorator.push_str(&format!(
+                    "@{}(() => {}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    join_type, target_table, on_delete, on_update
+                ));
+
+                // Join column
+                column_decorator.push_str(&format!(
+                    "    @JoinColumn({{ name: \"{}\", referencedColumnName: \"{}\" }})",
+                    db_name, target_column
+                ));
+            } else {
+                // Join table options
+                column_decorator.push_str(&format!(
+                    "@JoinTable(() => {}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    target_table, on_delete, on_update
+                ));
+            }
         } else if is_primary {
             // Handle primary key or auto increment
             column_decorator = if data_type == "uuid" {
