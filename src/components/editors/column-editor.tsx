@@ -4,13 +4,10 @@ import { X } from "lucide-react";
 import { FormEvent, useCallback, useContext, useEffect, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
 
-type ColumnEditorProps = {
-  onSubmit: (id: string, payload: ColumnProps) => void;
-  column: ColumnProps;
-};
+export function ColumnEditor() {
+  const { editingColumn, setEditingColumn } = useContext(EditorContext);
 
-export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
-  const { setEditingColumn } = useContext(EditorContext);
+  if (!editingColumn) return <></>;
 
   return (
     <form className="flex flex-col gap-3 p-2">
@@ -27,9 +24,9 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
       <input
         id="column-name"
         type="text"
-        value={column.name}
+        value={editingColumn.name}
         onChange={(e) =>
-          onSubmit(column.id, { ...column, name: e.target.value })
+          setEditingColumn({ ...editingColumn, name: e.target.value })
         }
         className="dark:bg-neutral-600 p-2"
       />
@@ -37,10 +34,10 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
       <label htmlFor="column-data-type">Data Type</label>
       <select
         id="column-data-type"
-        value={column.dataType}
+        value={editingColumn.dataType}
         onChange={(e) =>
-          onSubmit(column.id, {
-            ...column,
+          setEditingColumn({
+            ...editingColumn,
             dataType: e.target.value as ColumnProps["dataType"],
           })
         }
@@ -56,9 +53,12 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
         <input
           id="column-primary-key"
           type="checkbox"
-          checked={!!column.primaryKey}
+          checked={!!editingColumn.primaryKey}
           onChange={() =>
-            onSubmit(column.id, { ...column, primaryKey: !column.primaryKey })
+            setEditingColumn({
+              ...editingColumn,
+              primaryKey: !editingColumn.primaryKey,
+            })
           }
         />
         <label htmlFor="column-primary-key">Primary Key</label>
@@ -68,9 +68,12 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
         <input
           id="column-unique"
           type="checkbox"
-          checked={!!column.unique}
+          checked={!!editingColumn.unique}
           onChange={() =>
-            onSubmit(column.id, { ...column, unique: !column.unique })
+            setEditingColumn({
+              ...editingColumn,
+              unique: !editingColumn.unique,
+            })
           }
         />
         <label htmlFor="column-unique">Unique</label>
@@ -80,53 +83,58 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
         <input
           id="column-index"
           type="checkbox"
-          checked={!!column.index}
+          checked={!!editingColumn.index}
           onChange={() =>
-            onSubmit(column.id, { ...column, index: !column.index })
+            setEditingColumn({ ...editingColumn, index: !editingColumn.index })
           }
         />
         <label htmlFor="column-index">Index</label>
       </div>
 
-      {!column.primaryKey && !column.autoIncrement && !column.unique && (
-        <>
-          <label htmlFor="column-default-value">Default Value</label>
-          <input
-            id="column-default-value"
-            type="text"
-            value={column.defaultValue?.toString() || ""}
-            onChange={(e) =>
-              onSubmit(column.id, { ...column, defaultValue: e.target.value })
-            }
-            className="dark:bg-neutral-600 p-2"
-          />
-        </>
-      )}
+      {!editingColumn.primaryKey &&
+        !editingColumn.autoIncrement &&
+        !editingColumn.unique && (
+          <>
+            <label htmlFor="column-default-value">Default Value</label>
+            <input
+              id="column-default-value"
+              type="text"
+              value={editingColumn.defaultValue?.toString() || ""}
+              onChange={(e) =>
+                setEditingColumn({
+                  ...editingColumn,
+                  defaultValue: e.target.value,
+                })
+              }
+              className="dark:bg-neutral-600 p-2"
+            />
+          </>
+        )}
 
       <label htmlFor="column-length">Length</label>
       <input
         id="column-length"
         type="number"
-        value={column.length}
+        value={editingColumn.length}
         onChange={(e) =>
-          onSubmit(column.id, {
-            ...column,
+          setEditingColumn({
+            ...editingColumn,
             length: parseInt(e.target.value || "0"),
           })
         }
         className="dark:bg-neutral-600 p-2"
       />
 
-      {column.dataType === "float" && (
+      {editingColumn.dataType === "float" && (
         <>
           <label htmlFor="column-precision">Precision</label>
           <input
             id="column-precision"
             type="number"
-            value={column.precision || 0}
+            value={editingColumn.precision || 0}
             onChange={(e) =>
-              onSubmit(column.id, {
-                ...column,
+              setEditingColumn({
+                ...editingColumn,
                 precision: parseInt(e.target.value || "0"),
               })
             }
@@ -138,7 +146,7 @@ export function ColumnEditor({ onSubmit, column }: ColumnEditorProps) {
       {/* TODO: Foreign key column. */}
 
       <code className="text-xs text-neutral-700 dark:text-neutral-400">
-        {column.id}
+        {editingColumn.id}
       </code>
     </form>
   );

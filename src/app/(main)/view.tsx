@@ -60,7 +60,7 @@ function App() {
   const [typeORMCode, setTypeORMCode] = useState<string>("");
 
   // editing pane controllers
-  const { editingColumn, setEditingColumn } = useContext(EditorContext);
+  const { editingColumn } = useContext(EditorContext);
 
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const nodePanelRef = useRef<ImperativePanelHandle>(null);
@@ -180,42 +180,40 @@ function App() {
     ]);
   };
 
-  const handleColumnEdits = (id: string, payload: ColumnProps) => {
-    try {
-      setEditingColumn(payload);
+  // apply `colum-editor` updates.
+  useEffect(() => {
+    if (!editingColumn) return;
 
-      const nds = [...nodes];
-
-      const node = nds.find((_node) => _node.id === payload.table);
+    setNodes((nds) => {
+      const node = nds.find((_node) => _node.id === editingColumn.table);
       if (!node) return nds;
 
       let columns = [...node.data.columns];
 
+      if (editingColumn.primaryKey) node.data.primaryKey = editingColumn.id;
+
       columns = columns.map((col) => {
-        if (col.id !== id) return col;
-        return payload;
+        if (col.id !== editingColumn.id) {
+          if (editingColumn.primaryKey) return { ...col, primaryKey: false };
+          return col;
+        }
+        return editingColumn;
       });
 
-      if (payload.primaryKey) node.data.primaryKey = id;
-
-      applyNodeChanges<Node<TableProps>>(
+      return applyNodeChanges<Node<TableProps>>(
         [
           {
-            id,
+            id: node.id,
             type: "replace",
             item: { ...node, data: { ...node.data, columns: columns } },
           },
         ],
         nds,
       );
+    });
+  }, [editingColumn]);
 
-      setNodes(nds);
-    } catch (err) {
-      console.error("Could not update column");
-    }
-  };
-
-  // monaco options
+  // monaco options.
   const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
     try {
       const response = await fetch(
@@ -250,17 +248,13 @@ function App() {
         ref={editorPanelRef}
       >
         <div className="max-h-screen overflow-y-scroll">
-          {editingColumn && (
-            <ColumnEditor onSubmit={handleColumnEdits} column={editingColumn} />
-          )}
+          {editingColumn && <ColumnEditor />}
         </div>
       </Panel>
 
-      <Panel
-        defaultSize={50}
-        className="relative duration-500 ease-in-out"
-        ref={nodePanelRef}
-      >
+      <PanelResizeHandle disabled></PanelResizeHandle>
+
+      <Panel defaultSize={50} className="relative" ref={nodePanelRef}>
         <div className="flex absolute top-8 right-8 rounded-md p-1 z-10 dark:bg-neutral-800">
           <IconButton icon={<FilePlus size="0.9rem" />} onClick={appendNode} />
         </div>
@@ -276,17 +270,12 @@ function App() {
           <Controls />
         </ReactFlow>
       </Panel>
-      {/* TODO: fix */}
-      {/* <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-800 flex justify-center items-center">
+      <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-800 flex justify-center items-center">
         <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm">
           <EllipsisVertical className="h-2.5 w-2.5" />
         </div>
-      </PanelResizeHandle> */}
-      <Panel
-        defaultSize={50}
-        className="duration-500 ease-in-out"
-        ref={codePanelRef}
-      >
+      </PanelResizeHandle>
+      <Panel defaultSize={50} ref={codePanelRef}>
         <div className="flex flex-col h-full">
           <div>[TODO] Language: Typescript, Syntax: TypeORM</div>
           <Editor
