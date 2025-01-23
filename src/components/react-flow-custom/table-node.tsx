@@ -4,9 +4,22 @@ import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultColumn } from "@/utils/constants";
 import type { ColumnProps, TableProps } from "@/utils/types/database-types";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
-import { Pencil, Plus, Trash } from "lucide-react";
+import {
+  ALargeSmall,
+  Braces,
+  Calendar,
+  FileDigit,
+  Hash,
+  Key,
+  Pencil,
+  Plus,
+  Search,
+  Star,
+  Text,
+  Trash,
+} from "lucide-react";
 import { nanoid } from "nanoid";
-import { useContext, useMemo, useState } from "react";
+import { ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { IconButton } from "../shared/buttons/icon-button";
 
 export type TableDataProps = TableProps & {
@@ -36,6 +49,41 @@ export function TableNode({
     [data.columns],
   );
 
+  const renderIcon = useCallback((column: ColumnProps): ReactNode => {
+    if (column.primaryKey) return <Key size="0.9rem" />;
+    if (column.index) return <Search size="0.9rem" />;
+    if (column.unique) return <Star size="0.9rem" />;
+    return "";
+  }, []);
+
+  const renderDatatypeIcon = useCallback((column: ColumnProps): ReactNode => {
+    switch (column.dataType) {
+      case "string":
+        return <ALargeSmall size="0.9rem" />;
+
+      case "number":
+        return <FileDigit size="0.9rem" />;
+
+      case "date":
+        return <Calendar size="0.9rem" />;
+
+      case "json":
+        return <Braces size="0.9rem" />;
+
+      case "float":
+        return <FileDigit size="0.9rem" />;
+
+      case "uuid":
+        return <Hash size="0.9rem" />;
+
+      case "objectId":
+        return <Hash size="0.9rem" />;
+
+      default:
+        return <Text size="0.9rem" />;
+    }
+  }, []);
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -57,23 +105,37 @@ export function TableNode({
         />
         <hr />
         {data.columns.map((column, idx) => (
-          <div className="relative group" key={idx}>
-            <input
-              type="text"
-              value={column.name}
-              onChange={(e) =>
-                data.onChange(id, {
-                  columns: handleColumnChange(idx, { name: e.target.value }),
-                })
-              }
-              autoFocus
-              className="nodrag dark:bg-neutral-600 p-2"
-            />
-            <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
-              <IconButton
-                icon={<Pencil size="0.8rem" />}
-                onClick={() => setEditingColumn(column)}
-              />
+          <div className="flex items-center gap-1" key={idx}>
+            <span className="px-1">{renderIcon(column)}</span>
+            <div className="flex-1 flex items-stretch nodrag dark:bg-neutral-600 w-full px-2 rounded-md">
+              <label
+                htmlFor={"column-name-input-" + idx}
+                className="px-1 flex items-center"
+              >
+                {renderDatatypeIcon(column)}
+              </label>
+              <div className="relative group flex-1">
+                <input
+                  id={"column-name-input-" + idx}
+                  type="text"
+                  value={column.name}
+                  onChange={(e) =>
+                    data.onChange(id, {
+                      columns: handleColumnChange(idx, {
+                        name: e.target.value,
+                      }),
+                    })
+                  }
+                  autoFocus
+                  className="p-2 bg-transparent"
+                />
+                <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
+                  <IconButton
+                    icon={<Pencil size="0.8rem" />}
+                    onClick={() => setEditingColumn(column)}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         ))}

@@ -13,7 +13,7 @@ body {
 
 input,
 select {
-    @apply rounded-md;
+    @apply rounded-md focus:outline-0;
 }
 
 select {
