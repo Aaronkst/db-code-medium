@@ -1,4 +1,7 @@
+use regex::Regex;
+use serde_json::json;
 use serde_json::Value;
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 // use web_sys::console;
 
@@ -176,4 +179,110 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
     entity_code.push('}');
 
     entity_code
+}
+
+#[wasm_bindgen]
+pub fn convert_from_typeorm(typeorm_code: &str) -> String {
+    let mut table_object = json!({
+        "data": {
+            "name": "",
+            "columns": [],
+            "primaryKey": "",
+        }
+    });
+
+    // Regex to match the entity class name
+    let entity_regex = Regex::new(r"export class (\w+) \{").unwrap();
+    if let Some(caps) = entity_regex.captures(typeorm_code) {
+        table_object["data"]["name"] = json!(caps[1].to_string());
+    }
+
+    // Regex to match column definitions
+    let column_regex = Regex::new(r"@Column\(\{([^}]+)\}\)\s+(\w+): (\w+);").unwrap();
+    let primary_key_regex = Regex::new(r"@PrimaryGeneratedColumn\(([^)]+)?\)").unwrap();
+    let mut primary_key_found = false;
+
+    for line in typeorm_code.lines() {
+        if let Some(caps) = primary_key_regex.captures(line) {
+            if let Some(primary_key) = caps.get(1) {
+                table_object["data"]["primaryKey"] = json!(primary_key.as_str());
+            } else {
+                table_object["data"]["primaryKey"] = json!("id");
+            }
+            primary_key_found = true;
+        }
+
+        if let Some(caps) = column_regex.captures(line) {
+            let column_options = &caps[1];
+            let column_name = &caps[2];
+            let data_type = &caps[3];
+
+            let mut column_object = json!({
+                "name": column_name,
+                "dataType": data_type,
+                "nullable": false,
+                "unique": false,
+                "defaultValue": "",
+                "length": 0,
+                "precision": 0,
+                "scale": 0,
+                "autoIncrement": false,
+                "index": false,
+                "foreignKey": null,
+            });
+
+            // Parse column options
+            for option in column_options.split(',') {
+                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    match parts[0] {
+                        "name" => {
+                            column_object["dbName"] = json!(parts[1].trim_matches('"'));
+                        }
+                        "type" => {
+                            column_object["dataType"] = json!(parts[1].trim_matches('"'));
+                        }
+                        "nullable" => {
+                            column_object["nullable"] = json!(parts[1] == "true");
+                        }
+                        "unique" => {
+                            column_object["unique"] = json!(parts[1] == "true");
+                        }
+                        "default" => {
+                            column_object["defaultValue"] = json!(parts[1].trim_matches('"'));
+                        }
+                        "length" => {
+                            column_object["length"] = json!(parts[1].parse::<u64>().unwrap_or(0));
+                        }
+                        "precision" => {
+                            column_object["precision"] =
+                                json!(parts[1].parse::<u64>().unwrap_or(0));
+                        }
+                        "scale" => {
+                            column_object["scale"] = json!(parts[1].parse::<u64>().unwrap_or(0));
+                        }
+                        "autoIncrement" => {
+                            column_object["autoIncrement"] = json!(parts[1] == "true");
+                        }
+                        "index" => {
+                            column_object["index"] = json!(parts[1] == "true");
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            table_object["data"]["columns"]
+                .as_array_mut()
+                .unwrap()
+                .push(column_object);
+        }
+    }
+
+    // If no primary key was found, set a default one
+    if !primary_key_found {
+        table_object["data"]["primaryKey"] = json!("id");
+    }
+
+    serde_json::to_string(&table_object).unwrap()
 }
