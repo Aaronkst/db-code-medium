@@ -35,9 +35,9 @@ export type ColumnProps = {
   nullable: boolean;
   defaultValue: string | number | boolean | null;
   length: number;
-  precision: number | null;
-  scale: number | null;
-  collation: string;
+  precision: number | null; // total number of digits.
+  scale: number | null; // total number of digits after decimal points.
+  collation: string | null;
   description: string;
   autoIncrement: boolean; // defaults false
   foreignKey: JoinProps | null;

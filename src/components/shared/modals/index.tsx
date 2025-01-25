@@ -8,7 +8,12 @@ type ModalProps = {
   children: React.ReactNode; // Content inside the modal
 };
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+}) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Close modal if click is outside the modal container
@@ -60,5 +65,3 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     </div>
   );
 };
-
-export default Modal;

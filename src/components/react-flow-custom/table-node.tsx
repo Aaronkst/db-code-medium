@@ -91,10 +91,10 @@ export function TableNode({
   }, []);
 
   return (
-    <div className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white group">
+    <div className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white group/table">
       <IconButton
         icon={<Trash size="0.9rem" color="white" />}
-        className="group-hover:block hidden absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-full"
+        className="group-hover/table:block hidden absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-full"
         onClick={() => data.onDelete(id)}
       />
       <div className="p-3 overflow-hidden">
@@ -138,7 +138,7 @@ export function TableNode({
                   >
                     {renderDatatypeIcon(column)}
                   </label>
-                  <div className="relative group flex-1">
+                  <div className="relative group/column flex-1">
                     <input
                       id={"column-name-input-" + idx}
                       type="text"
@@ -153,7 +153,7 @@ export function TableNode({
                       autoFocus
                       className="p-2 bg-transparent"
                     />
-                    <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover:block">
+                    <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover/column:block">
                       <IconButton
                         icon={<Pencil size="0.8rem" />}
                         onClick={() => setEditingColumn(column)}

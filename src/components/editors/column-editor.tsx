@@ -1,11 +1,14 @@
 import { EditorContext } from "@/lib/context/editor-context";
 import type { ColumnProps } from "@/utils/types/database-types";
 import { X } from "lucide-react";
-import { FormEvent, useCallback, useContext, useEffect, useState } from "react";
+import { useContext } from "react";
+import { Button } from "../shared/buttons/button";
 import { IconButton } from "../shared/buttons/icon-button";
+import { applyEdgeChanges } from "@xyflow/react";
 
 export function ColumnEditor() {
-  const { editingColumn, setEditingColumn } = useContext(EditorContext);
+  const { editingColumn, setEditingColumn, setEditingJoin } =
+    useContext(EditorContext);
 
   if (!editingColumn) return <></>;
 
@@ -21,6 +24,22 @@ export function ColumnEditor() {
       </div>
       <hr />
       <label htmlFor="column-name">Name</label>
+      <input
+        id="column-name"
+        type="text"
+        value={editingColumn.name}
+        onChange={(e) =>
+          setEditingColumn({ ...editingColumn, name: e.target.value })
+        }
+        className="dark:bg-neutral-600 p-2"
+      />
+
+      <label htmlFor="column-db-name">Name (Database)</label>
+      <span className="text-xs text-neutral-700 dark:text-neutral-400">
+        Encouraged to use <code className="text-pink-700">snake_case</code> for
+        RDS naming and <code className="text-pink-700">camelCase</code> for
+        NoSQL naming.
+      </span>
       <input
         id="column-name"
         type="text"
@@ -47,6 +66,10 @@ export function ColumnEditor() {
         <option value="number">Number</option>
         <option value="date">Date</option>
         <option value="json">JSON</option>
+        <option value="float">Float</option>
+        {editingColumn.primaryKey && <option value="uuid">UUID</option>}
+        {/* TODO: Mongodb */}
+        {/* {editingColumn.primaryKey && <option value="objectId">Object ID</option>} */}
       </select>
 
       <div className="flex gap-2">
@@ -66,6 +89,33 @@ export function ColumnEditor() {
 
       <div className="flex gap-2">
         <input
+          id="column-auto-increment"
+          type="checkbox"
+          checked={!!editingColumn.autoIncrement}
+          onChange={() =>
+            setEditingColumn({
+              ...editingColumn,
+              autoIncrement: !editingColumn.autoIncrement,
+            })
+          }
+          disabled={
+            !editingColumn.primaryKey || editingColumn.dataType !== "number"
+          }
+        />
+        <label
+          htmlFor="column-auto-increment"
+          className={
+            !editingColumn.primaryKey
+              ? "text-neutral-400 dark:text-neutral-700"
+              : ""
+          }
+        >
+          Auto Increment
+        </label>
+      </div>
+
+      <div className="flex gap-2">
+        <input
           id="column-unique"
           type="checkbox"
           checked={!!editingColumn.unique}
@@ -73,6 +123,7 @@ export function ColumnEditor() {
             setEditingColumn({
               ...editingColumn,
               unique: !editingColumn.unique,
+              nullable: false,
             })
           }
         />
@@ -91,25 +142,66 @@ export function ColumnEditor() {
         <label htmlFor="column-index">Index</label>
       </div>
 
-      {!editingColumn.primaryKey &&
-        !editingColumn.autoIncrement &&
-        !editingColumn.unique && (
-          <>
-            <label htmlFor="column-default-value">Default Value</label>
-            <input
-              id="column-default-value"
-              type="text"
-              value={editingColumn.defaultValue?.toString() || ""}
-              onChange={(e) =>
-                setEditingColumn({
-                  ...editingColumn,
-                  defaultValue: e.target.value,
-                })
-              }
-              className="dark:bg-neutral-600 p-2"
-            />
-          </>
-        )}
+      <div className="flex gap-2">
+        <input
+          id="column-nullable"
+          type="checkbox"
+          checked={!!editingColumn.nullable}
+          disabled={
+            editingColumn.primaryKey ||
+            editingColumn.autoIncrement ||
+            editingColumn.unique
+          }
+          onChange={() =>
+            setEditingColumn({
+              ...editingColumn,
+              nullable: !editingColumn.nullable,
+            })
+          }
+        />
+        <label
+          htmlFor="column-nullable"
+          className={
+            editingColumn.primaryKey ||
+            editingColumn.autoIncrement ||
+            editingColumn.unique
+              ? "text-neutral-400 dark:text-neutral-700"
+              : ""
+          }
+        >
+          Nullable
+        </label>
+      </div>
+
+      <label
+        htmlFor="column-default-value"
+        className={
+          editingColumn.primaryKey ||
+          editingColumn.autoIncrement ||
+          editingColumn.unique
+            ? "text-neutral-400 dark:text-neutral-700"
+            : ""
+        }
+      >
+        Default Value
+      </label>
+      <input
+        id="column-default-value"
+        type="text"
+        value={editingColumn.defaultValue?.toString() || ""}
+        onChange={(e) =>
+          setEditingColumn({
+            ...editingColumn,
+            defaultValue: e.target.value,
+          })
+        }
+        className="dark:bg-neutral-600 p-2"
+        disabled={
+          editingColumn.primaryKey ||
+          editingColumn.autoIncrement ||
+          editingColumn.unique
+        }
+      />
 
       <label htmlFor="column-length">Length</label>
       <input
@@ -125,7 +217,7 @@ export function ColumnEditor() {
         className="dark:bg-neutral-600 p-2"
       />
 
-      {editingColumn.dataType === "float" && (
+      {["float", "number"].includes(editingColumn.dataType) && (
         <>
           <label htmlFor="column-precision">Precision</label>
           <input
@@ -142,8 +234,53 @@ export function ColumnEditor() {
           />
         </>
       )}
+
+      {editingColumn.dataType === "float" && (
+        <>
+          <label htmlFor="column-scale">Scale</label>
+          <input
+            id="column-scale"
+            type="number"
+            value={editingColumn.scale || 0}
+            onChange={(e) =>
+              setEditingColumn({
+                ...editingColumn,
+                scale: parseInt(e.target.value || "0"),
+              })
+            }
+            className="dark:bg-neutral-600 p-2"
+          />
+        </>
+      )}
+
+      {editingColumn.dataType === "string" && (
+        <>
+          <label htmlFor="column-collation">Collation</label>
+          <input
+            id="column-collation"
+            type="number"
+            value={editingColumn.collation || 0}
+            onChange={(e) =>
+              setEditingColumn({
+                ...editingColumn,
+                collation: e.target.value || "",
+              })
+            }
+            className="dark:bg-neutral-600 p-2"
+          />
+        </>
+      )}
       <hr />
-      {/* TODO: Foreign key column. */}
+
+      {!!editingColumn.foreignKey && (
+        <Button
+          type="reset"
+          onClick={() => {
+            setEditingJoin(editingColumn.foreignKey);
+          }}
+          label="Edit FK Settings"
+        />
+      )}
 
       <code className="text-xs text-neutral-700 dark:text-neutral-400">
         {editingColumn.id}

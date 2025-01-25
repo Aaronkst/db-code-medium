@@ -1,23 +1,16 @@
 import { Button } from "@/components/shared/buttons/button";
-import Modal from "@/components/shared/modals";
+import { Modal } from "@/components/shared/modals";
 import { EditorContext } from "@/lib/context/editor-context";
 import type {
   ColumnProps,
   JoinProps,
   TableProps,
 } from "@/utils/types/database-types";
-import {
-  applyEdgeChanges,
-  applyNodeChanges,
-  type Edge,
-  type Node,
-} from "@xyflow/react";
+import { applyEdgeChanges, applyNodeChanges, type Node } from "@xyflow/react";
 import { cloneDeep } from "lodash";
 import { nanoid } from "nanoid";
 import {
-  type Dispatch,
   type FormEvent,
-  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -25,14 +18,9 @@ import {
   useState,
 } from "react";
 
-type JoinEditorProps = {
-  nodes: Node<TableProps>[];
-  setEdges: Dispatch<SetStateAction<Edge<TableProps>[]>>;
-  setNodes: Dispatch<SetStateAction<Node<TableProps>[]>>;
-};
-
-export function JoinEditor({ nodes, setNodes, setEdges }: JoinEditorProps) {
-  const { editingJoin, setEditingJoin } = useContext(EditorContext);
+export function JoinEditor() {
+  const { nodes, setNodes, setEdges, editingJoin, setEditingJoin } =
+    useContext(EditorContext);
   const [availableTargets, setAvailableTargets] = useState<Node<TableProps>[]>(
     [],
   );

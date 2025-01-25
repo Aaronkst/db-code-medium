@@ -56,13 +56,11 @@ type AppProps = {
 };
 
 function App() {
-  const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
-  const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
   const [wasmModule, setWasmModule] =
     useState<typeof import("@/wasm/src_rs")>();
   const [typeORMCode, setTypeORMCode] = useState<string>("");
 
-  const { editingJoin, setEditingJoin, editingColumn } =
+  const { nodes, setNodes, edges, setEdges, setEditingJoin, editingColumn } =
     useContext(EditorContext);
 
   // editing pane controllers
