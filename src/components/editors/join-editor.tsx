@@ -19,11 +19,14 @@ import {
 } from "react";
 
 export function JoinEditor() {
-  const { nodes, setNodes, setEdges, editingJoin, setEditingJoin } =
-    useContext(EditorContext);
-  const [availableTargets, setAvailableTargets] = useState<Node<TableProps>[]>(
-    [],
-  );
+  const {
+    nodes,
+    setNodes,
+    setEdges,
+    editingJoin,
+    setEditingColumn,
+    setEditingJoin,
+  } = useContext(EditorContext);
   const [currentNode, setCurrentNode] = useState<Node<TableProps>>();
 
   const targetTable = useMemo(() => {
@@ -71,8 +74,48 @@ export function JoinEditor() {
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
+      const newColumn = {
+        id: nanoid(),
+        table: currentNode.data.id,
+        name: (targetTable.data.name || targetTable.data.id) + "Id",
+        dbName: (targetTable.data.name || targetTable.data.id) + "_id",
+        dataType: targetCol.dataType,
+        primaryKey: false,
+        index: false,
+        unique: false,
+        nullable: false,
+        defaultValue: null,
+        length: targetCol.length,
+        precision: targetCol.precision,
+        scale: targetCol.scale,
+        collation: targetCol.collation,
+        description: "",
+        autoIncrement: false,
+        foreignKey: editingJoin,
+      };
+
       // apply join updates
       setNodes((nds) => {
+        if (currentNode.id === targetTable.id) {
+          // self join.
+          return applyNodeChanges<Node<TableProps>>(
+            [
+              {
+                id: currentNode.id,
+                type: "replace",
+                item: {
+                  ...currentNode,
+                  data: {
+                    ...currentNode.data,
+                    joins: sourceJoins,
+                    columns: [...currentNode.data.columns, newColumn],
+                  },
+                },
+              },
+            ],
+            nds,
+          );
+        }
         return applyNodeChanges<Node<TableProps>>(
           [
             {
@@ -83,30 +126,7 @@ export function JoinEditor() {
                 data: {
                   ...currentNode.data,
                   joins: sourceJoins,
-                  columns: [
-                    ...currentNode.data.columns,
-                    {
-                      id: nanoid(),
-                      table: currentNode.data.id,
-                      name:
-                        (targetTable.data.name || targetTable.data.id) + "Id",
-                      dbName:
-                        (targetTable.data.name || targetTable.data.id) + "_id",
-                      dataType: targetCol.dataType,
-                      primaryKey: false,
-                      index: false,
-                      unique: false,
-                      nullable: false,
-                      defaultValue: null,
-                      length: targetCol.length,
-                      precision: targetCol.precision,
-                      scale: targetCol.scale,
-                      collation: targetCol.collation,
-                      description: "",
-                      autoIncrement: false,
-                      foreignKey: editingJoin,
-                    },
-                  ],
+                  columns: [...currentNode.data.columns, newColumn],
                 },
               },
             },
@@ -140,6 +160,7 @@ export function JoinEditor() {
         ),
       );
 
+      setEditingColumn(newColumn); // open column editor with the new foreign key
       setEditingJoin(null);
     },
     [currentNode, targetTable, editingJoin, setNodes, setEdges],
@@ -211,7 +232,6 @@ export function JoinEditor() {
 
   useEffect(() => {
     if (!nodes.length || !editingJoin) {
-      setAvailableTargets([]);
       return;
     }
     const clonedNodes = cloneDeep(nodes);
@@ -220,7 +240,9 @@ export function JoinEditor() {
     for (let i = 0; i < clonedNodes.length; i++) {
       const node = clonedNodes[i];
       const join = node.data.joins.find(
-        (join) => join.id === editingJoin.id && !join.source,
+        (join) =>
+          join.id === editingJoin.id &&
+          (!join.source || join.source === node.id), // no source or self join only.
       );
       if (join) {
         editIdx = i;
@@ -228,11 +250,7 @@ export function JoinEditor() {
       }
     }
 
-    if (editIdx < 0) setAvailableTargets([]);
     setCurrentNode(clonedNodes[editIdx]);
-    clonedNodes.splice(editIdx, 1);
-
-    setAvailableTargets(clonedNodes);
   }, [nodes, editingJoin]);
 
   if (!editingJoin) return <></>;
@@ -256,7 +274,7 @@ export function JoinEditor() {
             }
             className="dark:bg-neutral-600 p-2"
           >
-            {availableTargets.map((target, idx) => (
+            {nodes.map((target, idx) => (
               <option key={"target-" + idx} value={target.data.id}>
                 {target.data.name || target.data.id}
               </option>

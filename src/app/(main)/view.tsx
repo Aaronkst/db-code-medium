@@ -265,6 +265,8 @@ function App() {
     [nodes],
   );
   const onConnect: OnConnect = useCallback((connection) => {
+    console.log(connection);
+
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
     const baseEdgeId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
 
@@ -277,6 +279,43 @@ function App() {
 
       applyEdgeEffects = true;
 
+      if (sourceNode.id === targetNode.id) {
+        // self join.
+        return applyNodeChanges<Node<TableProps>>(
+          [
+            {
+              id: sourceNode.id,
+              type: "replace",
+              item: {
+                ...sourceNode,
+                data: {
+                  ...sourceNode.data,
+                  joins: [
+                    ...sourceNode.data.joins,
+                    {
+                      id: baseEdgeId,
+                      target: {
+                        table: connection.target,
+                        column:
+                          targetNode.data.columns.find(
+                            (col) => col.primaryKey || col.unique,
+                          )?.id || "",
+                      },
+                      source: sourceNode.id,
+                      onDelete: "CASCADE",
+                      onUpdate: "CASCADE",
+                      through: null,
+                      type: "one-to-one",
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+          nds,
+        );
+      }
+      // join to other tables.
       return applyNodeChanges<Node<TableProps>>(
         [
           {
