@@ -76,8 +76,14 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             if join_type != "many-to-many" {
                 // Join column options
                 column_decorator.push_str(&format!(
-                    "@{}(() => {}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                    join_type, target_table, on_delete, on_update
+                    "@{}(() => {}, ({}) => {}.{} {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    join_type,
+                    target_table,
+                    target_table,
+                    target_table,
+                    target_column,
+                    on_delete,
+                    on_update
                 ));
 
                 // Join column
@@ -88,8 +94,19 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             } else {
                 // Join table options
                 column_decorator.push_str(&format!(
-                    "@JoinTable(() => {}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                    target_table, on_delete, on_update
+                    "@ManyToMany(() => {}, ({}) => {}.{} {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    target_table,
+                    target_table,
+                    target_table,
+                    target_column,
+                    on_delete,
+                    on_update
+                ));
+                column_decorator.push_str(&format!(
+                    "    @JoinTable({{ name: \"{}_{}\", referencedColumnName: \"{}\" }})",
+                    table_name.to_lowercase(),
+                    target_table.to_lowercase(),
+                    target_column
                 ));
             }
         } else if is_primary {
