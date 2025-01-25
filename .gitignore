@@ -41,3 +41,4 @@ next-env.d.ts
 
 # rust wasm
 /src-rs/target
+*/test
