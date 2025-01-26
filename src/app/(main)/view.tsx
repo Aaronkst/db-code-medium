@@ -1,10 +1,14 @@
 "use client";
 
 import { ColumnEditor, JoinEditor } from "@/components/editors";
-import { TableNode } from "@/components/react-flow-custom/table-node";
+import {
+  TableDataProps,
+  TableNode,
+} from "@/components/react-flow-custom/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
 import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
+import { extractTypeORMEntities } from "@/utils/helpers";
 import type {
   ColumnProps,
   JoinProps,
@@ -68,6 +72,12 @@ function App() {
   const nodePanelRef = useRef<ImperativePanelHandle>(null);
   const codePanelRef = useRef<ImperativePanelHandle>(null);
 
+  // TODO: better monaco editor type
+  const editorRef = useRef<any>(null);
+
+  // control when to compile codes
+  const compileNodes = useRef<boolean>(true);
+
   // add more conditions as more editors are added.
   // TODO: table editor
   const showEditingPane = useMemo(() => !!editingColumn, [editingColumn]);
@@ -79,12 +89,12 @@ function App() {
     codePanelRef.current?.resize(showEditingPane ? 40 : 50);
   }, [showEditingPane]);
 
-  const debouncedCompile = useMemo(
+  const debouncedCompileToTypeORM = useMemo(
     () =>
       debounce(
         (wasm: typeof import("@/wasm/src_rs"), nodes: Node<TableProps>[]) => {
           try {
-            console.log("⚒️ converting...", nodes);
+            console.log("⚒️ converting to code...");
 
             let parsedNodes = cloneDeep(nodes);
 
@@ -132,6 +142,61 @@ function App() {
     [],
   );
 
+  const debouncedCompileFromTypeORM = useMemo(
+    () =>
+      debounce((wasm: typeof import("@/wasm/src_rs"), code: string) => {
+        try {
+          console.log("⚒️ converting from code...");
+
+          const entities = extractTypeORMEntities(code);
+
+          console.log("entities:", entities);
+
+          const editedNodes: Node<TableProps>[] = [];
+          // TODO: foreign key adaptation.
+          entities.forEach((entity, index) => {
+            const result = wasm.convert_from_typeorm(entity);
+            const node = JSON.parse(result) as Node<TableProps>;
+            node.id = nodes[index]?.id || nanoid();
+            node.position = nodes[index]?.position || { x: 10, y: 10 };
+            node.type = "table";
+            node.data.columns = node.data.columns.map((column, index) => {
+              column.id = nodes[index]?.data.columns[index]?.id || nanoid();
+              column.table = node.id;
+              return column;
+            });
+            // @ts-expect-error: TODO: Better types.
+            node.data.onChange = editNode;
+            // @ts-expect-error: TODO: Better types.
+            node.data.onDelete = removeNode;
+            editedNodes.push(node);
+          });
+
+          setNodes((nds) => {
+            const newNodes: Node<TableProps>[] = [];
+            const changedNodes = applyNodeChanges<Node<TableProps>>(
+              editedNodes
+                .filter((node) => {
+                  const isReplacable = !!nds.find((n) => n.id === node.id);
+                  if (!isReplacable) newNodes.push(node);
+                  return isReplacable;
+                })
+                .map((node) => ({
+                  id: node.id,
+                  type: "replace",
+                  item: node,
+                })),
+              nds,
+            );
+            return [...changedNodes, ...newNodes];
+          });
+        } catch (e) {
+          console.log("⚠️ wasm error:", e);
+        }
+      }, 500),
+    [nodes],
+  );
+
   useEffect(() => {
     const loadWasm = async () => {
       try {
@@ -150,7 +215,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (wasmModule) debouncedCompile(wasmModule, nodes);
+    console.log(compileNodes.current);
+    if (!wasmModule || !compileNodes.current) return;
+    debouncedCompileToTypeORM(wasmModule, nodes);
   }, [wasmModule, nodes]);
 
   // node manipulators
@@ -279,8 +346,24 @@ function App() {
 
       applyEdgeEffects = true;
 
+      const newJoin: JoinProps = {
+        id: baseEdgeId,
+        target: {
+          table: connection.target,
+          column:
+            targetNode.data.columns.find((col) => col.primaryKey || col.unique)
+              ?.id || "",
+        },
+        source: null,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+        through: null,
+        type: "one-to-one",
+      };
+
       if (sourceNode.id === targetNode.id) {
         // self join.
+        newJoin.source === sourceNode.id;
         return applyNodeChanges<Node<TableProps>>(
           [
             {
@@ -290,24 +373,7 @@ function App() {
                 ...sourceNode,
                 data: {
                   ...sourceNode.data,
-                  joins: [
-                    ...sourceNode.data.joins,
-                    {
-                      id: baseEdgeId,
-                      target: {
-                        table: connection.target,
-                        column:
-                          targetNode.data.columns.find(
-                            (col) => col.primaryKey || col.unique,
-                          )?.id || "",
-                      },
-                      source: sourceNode.id,
-                      onDelete: "CASCADE",
-                      onUpdate: "CASCADE",
-                      through: null,
-                      type: "one-to-one",
-                    },
-                  ],
+                  joins: [...sourceNode.data.joins, newJoin],
                 },
               },
             },
@@ -325,24 +391,7 @@ function App() {
               ...sourceNode,
               data: {
                 ...sourceNode.data,
-                joins: [
-                  ...sourceNode.data.joins,
-                  {
-                    id: baseEdgeId,
-                    target: {
-                      table: connection.target,
-                      column:
-                        targetNode.data.columns.find(
-                          (col) => col.primaryKey || col.unique,
-                        )?.id || "",
-                    },
-                    source: null,
-                    onDelete: "CASCADE",
-                    onUpdate: "CASCADE",
-                    through: null,
-                    type: "one-to-one",
-                  },
-                ],
+                joins: [...sourceNode.data.joins, newJoin],
               },
             },
           },
@@ -393,6 +442,7 @@ function App() {
   // monaco options.
   const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
     try {
+      editorRef.current = editor;
       const response = await fetch(
         "https://raw.githubusercontent.com/typeorm/typeorm/master/index.d.ts",
       );
@@ -417,6 +467,11 @@ function App() {
     }
   };
 
+  const handleCodeChanges = (code: string | undefined) => {
+    if (!code || !wasmModule) return;
+    debouncedCompileFromTypeORM(wasmModule, code);
+  };
+
   return (
     <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
       <Panel
@@ -431,7 +486,12 @@ function App() {
 
       <PanelResizeHandle disabled></PanelResizeHandle>
 
-      <Panel defaultSize={50} className="relative" ref={nodePanelRef}>
+      <Panel
+        defaultSize={50}
+        className="relative"
+        ref={nodePanelRef}
+        onMouseDown={() => (compileNodes.current = true)}
+      >
         <div className="flex absolute top-8 right-8 rounded-md p-1 z-10 dark:bg-neutral-800">
           <IconButton icon={<FilePlus size="0.9rem" />} onClick={appendNode} />
         </div>
@@ -452,7 +512,11 @@ function App() {
           <EllipsisVertical className="h-2.5 w-2.5" />
         </div>
       </PanelResizeHandle>
-      <Panel defaultSize={50} ref={codePanelRef}>
+      <Panel
+        defaultSize={50}
+        ref={codePanelRef}
+        onMouseDown={() => (compileNodes.current = false)}
+      >
         <div className="flex flex-col h-full">
           <div>[TODO] Language: Typescript, Syntax: TypeORM</div>
           <Editor
@@ -461,10 +525,11 @@ function App() {
             theme="vs-dark"
             onMount={handleEditorDidMount}
             className="flex-1"
+            onChange={handleCodeChanges}
           />
         </div>
       </Panel>
-      <JoinEditor nodes={nodes} setNodes={setNodes} setEdges={setEdges} />
+      <JoinEditor />
     </PanelGroup>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { findDuplicateTableNames } from "@/utils/helpers";
 import type {
   ColumnProps,
   JoinProps,
@@ -10,18 +11,23 @@ import {
   createContext,
   type Dispatch,
   type SetStateAction,
+  useMemo,
   useState,
 } from "react";
 
 const EditorContext = createContext<{
+  // tables and relations
   nodes: Node<TableProps>[];
   setNodes: Dispatch<SetStateAction<Node<TableProps>[]>>;
   edges: Edge<TableProps>[];
   setEdges: Dispatch<SetStateAction<Edge<TableProps>[]>>;
+  // editing panes
   editingColumn: ColumnProps | null;
   setEditingColumn: (column: ColumnProps | null) => void;
   editingJoin: JoinProps | null;
   setEditingJoin: (column: JoinProps | null) => void;
+  // validation checks
+  duplicates: string[];
 }>({
   nodes: [],
   setNodes: () => {},
@@ -31,6 +37,7 @@ const EditorContext = createContext<{
   setEditingColumn: () => {},
   editingJoin: null,
   setEditingJoin: () => {},
+  duplicates: [],
 });
 
 const EditorProvider = ({ children }: { children: React.ReactNode }) => {
@@ -39,6 +46,8 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [editingColumn, _setEditingColumn] = useState<ColumnProps | null>(null);
   const [editingJoin, _setEditingJoin] = useState<JoinProps | null>(null);
+
+  const duplicates = useMemo(() => findDuplicateTableNames(nodes), [nodes]);
 
   function setEditingColumn(column: ColumnProps | null) {
     _setEditingColumn(column);
@@ -62,6 +71,8 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
         // join
         editingJoin,
         setEditingJoin,
+        // duplicates,
+        duplicates,
       }}
     >
       {children}

@@ -1,14 +1,9 @@
 use regex::Regex;
 use serde_json::json;
 use serde_json::Value;
-use std::collections::HashMap;
+// use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-// use web_sys::console;
-
-#[wasm_bindgen]
-pub fn add_numbers(a: i32, b: i32) -> i32 {
-    a + b
-}
+use web_sys::console;
 
 #[wasm_bindgen]
 pub fn convert_to_typeorm(json_str: &str) -> String {
@@ -184,105 +179,266 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 #[wasm_bindgen]
 pub fn convert_from_typeorm(typeorm_code: &str) -> String {
     let mut table_object = json!({
+        "type": "table",
         "data": {
             "name": "",
-            "columns": [],
+            "dbName": "",
             "primaryKey": "",
-        }
+            "description": "",
+            "timestamps": true,
+            "engine": "InnoDB",
+            "columns": [],
+            "joins": []
+        },
     });
 
-    // Regex to match the entity class name
     let entity_regex = Regex::new(r"export class (\w+) \{").unwrap();
-    if let Some(caps) = entity_regex.captures(typeorm_code) {
-        table_object["data"]["name"] = json!(caps[1].to_string());
-    }
 
-    // Regex to match column definitions
-    let column_regex = Regex::new(r"@Column\(\{([^}]+)\}\)\s+(\w+): (\w+);").unwrap();
-    let primary_key_regex = Regex::new(r"@PrimaryGeneratedColumn\(([^)]+)?\)").unwrap();
-    let mut primary_key_found = false;
+    // Regex for @Column without options
+    let column_basic_regex = Regex::new(r"@Column\(\)\s*(\w+): ([\w<>, |]+);").unwrap();
+    // Regex for @Column with options
+    let column_with_options_regex =
+        Regex::new(r"@Column\(\s*([^)]*)\s*\)\s*(\w+): ([\w<>, |]+);").unwrap();
 
-    for line in typeorm_code.lines() {
-        if let Some(caps) = primary_key_regex.captures(line) {
-            if let Some(primary_key) = caps.get(1) {
-                table_object["data"]["primaryKey"] = json!(primary_key.as_str());
-            } else {
-                table_object["data"]["primaryKey"] = json!("id");
+    // Regex for @Column without options
+    let primary_key_column_basic_regex =
+        Regex::new(r"@PrimaryGeneratedColumn\(\)\s*(\w+): ([\w<>, |]+);").unwrap();
+    // Regex for @Column with options
+    let primary_key_column_with_options_regex =
+        Regex::new(r"@PrimaryGeneratedColumn\(\s*([^)]*)\s*\)\s*(\w+): ([\w<>, |]+);").unwrap();
+
+    let many_to_one_regex = Regex::new(r"@ManyToOne\(([^)]+)?\)").unwrap();
+    let one_to_many_regex = Regex::new(r"@OneToMany\(([^)]+)?\)").unwrap();
+    let many_to_many_regex = Regex::new(r"@ManyToMany\(([^)]+)?\)").unwrap();
+    let one_to_one_regex = Regex::new(r"@OneToOne\(([^)]+)?\)").unwrap();
+    let join_column_regex = Regex::new(r"@JoinColumn\(\{([^}]+)\}\)").unwrap();
+    let join_table_regex = Regex::new(r"@JoinTable\(\{([^}]+)\}\)").unwrap();
+
+    let lines: Vec<&str> = typeorm_code.lines().collect();
+
+    let mut found_entity = false;
+    let mut current_foreign_key = json!({
+        "target": null,
+        "onDelete": "RESTRICT",
+        "onUpdate": "RESTRICT",
+        "through": null,
+        "source": null,
+        "type": null
+    });
+
+    for line in lines {
+        let line = line.trim();
+        console::log_1(&format!("Processing line: {}", line).into());
+
+        if !found_entity {
+            // Check for the single entity class definition
+            if let Some(caps) = entity_regex.captures(line) {
+                found_entity = true;
+                let entity_name = caps[1].to_string();
+                table_object["data"]["name"] = json!(entity_name);
             }
-            primary_key_found = true;
+            continue;
         }
 
-        if let Some(caps) = column_regex.captures(line) {
-            let column_options = &caps[1];
-            let column_name = &caps[2];
-            let data_type = &caps[3];
+        let mut found_column = false;
+        let mut column_name = String::new();
+        let mut data_type = String::new();
+        let mut column_options = String::new();
+
+        // Check for columns without options
+        if let Some(caps) = column_basic_regex.captures(line) {
+            column_name = caps[1].to_string();
+            data_type = caps[2].to_string();
+            found_column = true;
+            println!("Found column: {} with type: {}", column_name, data_type);
+        }
+
+        // Check for columns with options
+        if let Some(caps) = column_with_options_regex.captures(line) {
+            column_options = caps[1].to_string();
+            column_name = caps[2].to_string();
+            data_type = caps[3].to_string();
+            found_column = true;
+            println!(
+                "Found column with options: {} with type: {}",
+                column_name, data_type
+            );
+            println!("Options: {}", column_options);
+        }
+
+        // Check for columns without options
+        if let Some(caps) = primary_key_column_basic_regex.captures(line) {
+            column_name = caps[1].to_string();
+            data_type = caps[2].to_string();
+            found_column = true;
+            println!("Found column: {} with type: {}", column_name, data_type);
+        }
+
+        // Check for columns with options
+        if let Some(caps) = primary_key_column_with_options_regex.captures(line) {
+            column_options = caps[1].to_string();
+            column_name = caps[2].to_string();
+            data_type = caps[3].to_string();
+            found_column = true;
+            println!(
+                "Found column with options: {} with type: {}",
+                column_name, data_type
+            );
+            println!("Options: {}", column_options);
+        }
+
+        // Handle case where @Column() is followed by the column on the next line
+        if line.contains(":") && !line.contains("@Column") {
+            if !column_name.is_empty() && !data_type.is_empty() {
+                println!("Column: {} with type: {}", column_name, data_type);
+                println!("Options: {}", column_options);
+                column_name.clear();
+                data_type.clear();
+                column_options.clear();
+            }
+        }
+
+        // Extract columns
+        if found_column {
+            // let column_options = caps.get(1).map(|m| m.as_str()).unwrap_or("{}");
+            // let column_name = &caps[2];
+            // let data_type = &caps[3];
+
+            // Log the column details being processed
+            console::log_1(
+                &format!(
+                    "Found column - Name: {}, Type: {}, Options: {}",
+                    column_name, data_type, column_options
+                )
+                .into(),
+            );
 
             let mut column_object = json!({
                 "name": column_name,
+                "dbName": column_name,
                 "dataType": data_type,
-                "nullable": false,
-                "unique": false,
-                "defaultValue": "",
-                "length": 0,
-                "precision": 0,
-                "scale": 0,
-                "autoIncrement": false,
+                "primaryKey": false,
                 "index": false,
+                "unique": false,
+                "nullable": false,
+                "defaultValue": null,
+                "length": 0,
+                "precision": null,
+                "scale": null,
+                "collation": "",
+                "description": "",
+                "autoIncrement": false,
                 "foreignKey": null,
             });
 
             // Parse column options
-            for option in column_options.split(',') {
-                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
-                if parts.len() == 2 {
-                    match parts[0] {
-                        "name" => {
-                            column_object["dbName"] = json!(parts[1].trim_matches('"'));
-                        }
-                        "type" => {
-                            column_object["dataType"] = json!(parts[1].trim_matches('"'));
-                        }
-                        "nullable" => {
-                            column_object["nullable"] = json!(parts[1] == "true");
-                        }
-                        "unique" => {
-                            column_object["unique"] = json!(parts[1] == "true");
-                        }
-                        "default" => {
-                            column_object["defaultValue"] = json!(parts[1].trim_matches('"'));
-                        }
-                        "length" => {
-                            column_object["length"] = json!(parts[1].parse::<u64>().unwrap_or(0));
-                        }
-                        "precision" => {
-                            column_object["precision"] =
-                                json!(parts[1].parse::<u64>().unwrap_or(0));
-                        }
-                        "scale" => {
-                            column_object["scale"] = json!(parts[1].parse::<u64>().unwrap_or(0));
-                        }
-                        "autoIncrement" => {
-                            column_object["autoIncrement"] = json!(parts[1] == "true");
-                        }
-                        "index" => {
-                            column_object["index"] = json!(parts[1] == "true");
-                        }
+            let options_json: serde_json::Value =
+                serde_json::from_str(&column_options).unwrap_or_else(|_| json!({}));
+
+            if let Some(obj) = options_json.as_object() {
+                for (key, value) in obj {
+                    match key.as_str() {
+                        "name" => column_object["dbName"] = value.clone(),
+                        "type" => column_object["dataType"] = value.clone(),
+                        "nullable" => column_object["nullable"] = value.clone(),
+                        "unique" => column_object["unique"] = value.clone(),
+                        "default" => column_object["defaultValue"] = value.clone(),
+                        "length" => column_object["length"] = value.clone(),
+                        "precision" => column_object["precision"] = value.clone(),
+                        "scale" => column_object["scale"] = value.clone(),
+                        "autoIncrement" => column_object["autoIncrement"] = value.clone(),
+                        "index" => column_object["index"] = value.clone(),
                         _ => {}
                     }
                 }
             }
 
+            // Add the column object to the table's columns array
             table_object["data"]["columns"]
                 .as_array_mut()
                 .unwrap()
                 .push(column_object);
         }
+
+        // Extract @ManyToOne relationships
+        if let Some(_caps) = many_to_one_regex.captures(line) {
+            current_foreign_key["type"] = json!("many-to-one");
+        }
+
+        // Extract @OneToMany relationships
+        if let Some(_caps) = one_to_many_regex.captures(line) {
+            current_foreign_key["type"] = json!("one-to-many");
+        }
+
+        // Extract @ManyToMany relationships
+        if let Some(_caps) = many_to_many_regex.captures(line) {
+            current_foreign_key["type"] = json!("many-to-many");
+        }
+
+        // Extract @OneToOne relationships
+        if let Some(_caps) = one_to_one_regex.captures(line) {
+            current_foreign_key["type"] = json!("one-to-one");
+        }
+
+        // Extract @JoinColumn
+        if let Some(caps) = join_column_regex.captures(line) {
+            let join_options = &caps[1];
+            for option in join_options.split(',') {
+                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    match parts[0] {
+                        "name" => {
+                            current_foreign_key["source"] = json!({
+                                "tableName": table_object["data"]["name"],
+                                "columnName": parts[1].trim_matches('"')
+                            });
+                        }
+                        "referencedColumnName" => {
+                            if let Some(target) = current_foreign_key["target"].as_object_mut() {
+                                target["columnName"] = json!(parts[1].trim_matches('"'));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Extract @JoinTable
+        if let Some(caps) = join_table_regex.captures(line) {
+            let join_options = &caps[1];
+            for option in join_options.split(',') {
+                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
+                if parts.len() == 2 {
+                    match parts[0] {
+                        "name" => {
+                            current_foreign_key["through"] = json!(parts[1].trim_matches('"'));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // Add the foreign key object to the joins array when complete
+        if current_foreign_key["type"] != json!(null) {
+            table_object["data"]["joins"]
+                .as_array_mut()
+                .unwrap()
+                .push(current_foreign_key.clone());
+
+            // Reset the foreign key object for the next relationship
+            current_foreign_key = json!({
+                "target": null,
+                "onDelete": "RESTRICT",
+                "onUpdate": "RESTRICT",
+                "through": null,
+                "source": null,
+                "type": null
+            });
+        }
     }
 
-    // If no primary key was found, set a default one
-    if !primary_key_found {
-        table_object["data"]["primaryKey"] = json!("id");
-    }
-
+    // Return the table object as a JSON string
     serde_json::to_string(&table_object).unwrap()
 }
