@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import { useContext } from "react";
 import { Button } from "../shared/buttons/button";
 import { IconButton } from "../shared/buttons/icon-button";
-import { applyEdgeChanges } from "@xyflow/react";
 
 export function ColumnEditor() {
   const { editingColumn, setEditingColumn, setEditingJoin } =

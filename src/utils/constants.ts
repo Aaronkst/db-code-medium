@@ -1,4 +1,4 @@
-import type { TableDataProps } from "@/components/react-flow-custom/table-node";
+import type { TableDataProps } from "@/components/flow-nodes/table-node";
 import type { ColumnProps, TableProps } from "./types/database-types";
 import { nanoid } from "nanoid";
 

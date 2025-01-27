@@ -1,12 +1,17 @@
 import { Button } from "@/components/shared/buttons/button";
 import { Modal } from "@/components/shared/modals";
 import { EditorContext } from "@/lib/context/editor-context";
+import {
+  deleteEdges,
+  deselectEdges,
+  updateNodes,
+} from "@/lib/flow-editors/nodes";
 import type {
   ColumnProps,
   JoinProps,
   TableProps,
 } from "@/utils/types/database-types";
-import { applyEdgeChanges, applyNodeChanges, type Node } from "@xyflow/react";
+import type { Node } from "@xyflow/react";
 import { cloneDeep } from "lodash";
 import { nanoid } from "nanoid";
 import {
@@ -98,67 +103,30 @@ export function JoinEditor() {
       setNodes((nds) => {
         if (currentNode.id === targetTable.id) {
           // self join.
-          return applyNodeChanges<Node<TableProps>>(
-            [
-              {
-                id: currentNode.id,
-                type: "replace",
-                item: {
-                  ...currentNode,
-                  data: {
-                    ...currentNode.data,
-                    joins: sourceJoins,
-                    columns: [...currentNode.data.columns, newColumn],
-                  },
-                },
-              },
-            ],
+          return updateNodes(
+            {
+              id: currentNode.id,
+              joins: sourceJoins,
+              columns: [...currentNode.data.columns, newColumn],
+            },
             nds,
           );
         }
-        return applyNodeChanges<Node<TableProps>>(
+        return updateNodes(
           [
             {
               id: currentNode.id,
-              type: "replace",
-              item: {
-                ...currentNode,
-                data: {
-                  ...currentNode.data,
-                  joins: sourceJoins,
-                  columns: [...currentNode.data.columns, newColumn],
-                },
-              },
+              joins: sourceJoins,
+              columns: [...currentNode.data.columns, newColumn],
             },
-            {
-              id: targetTable.id,
-              type: "replace",
-              item: {
-                ...targetTable,
-                data: {
-                  ...targetTable.data,
-                  joins: targetJoins,
-                },
-              },
-            },
+            { id: targetTable.id, joins: targetJoins },
           ],
           nds,
         );
       });
 
       // deselect edge
-      setEdges((edges) =>
-        applyEdgeChanges(
-          [
-            {
-              type: "select",
-              id: "xy-edge__" + editingJoin.id,
-              selected: false,
-            },
-          ],
-          edges,
-        ),
-      );
+      setEdges((edges) => deselectEdges("xy-edge__" + editingJoin.id, edges));
 
       setEditingColumn(newColumn); // open column editor with the new foreign key
       setEditingJoin(null);
@@ -187,47 +155,17 @@ export function JoinEditor() {
 
     // apply join updates
     setNodes((nds) => {
-      return applyNodeChanges<Node<TableProps>>(
+      return updateNodes(
         [
-          {
-            id: currentNode.id,
-            type: "replace",
-            item: {
-              ...currentNode,
-              data: {
-                ...currentNode.data,
-                joins: sourceJoins,
-              },
-            },
-          },
-          {
-            id: targetTable.id,
-            type: "replace",
-            item: {
-              ...targetTable,
-              data: {
-                ...targetTable.data,
-                joins: targetJoins,
-              },
-            },
-          },
+          { id: currentNode.id, joins: sourceJoins },
+          { id: targetTable.id, joins: targetJoins },
         ],
         nds,
       );
     });
 
     // remove edge
-    setEdges((edges) =>
-      applyEdgeChanges(
-        [
-          {
-            type: "remove",
-            id: "xy-edge__" + editingJoin.id,
-          },
-        ],
-        edges,
-      ),
-    );
+    setEdges((edges) => deleteEdges("xy-edge__" + editingJoin.id, edges));
   }, [currentNode, targetTable, editingJoin, setNodes, setEdges]);
 
   useEffect(() => {
@@ -256,7 +194,14 @@ export function JoinEditor() {
   if (!editingJoin) return <></>;
 
   return (
-    <Modal isOpen onClose={() => setEditingJoin(null)} title="Join Settings">
+    <Modal
+      isOpen
+      onClose={() => {
+        setEdges((edges) => deselectEdges("xy-edge__" + editingJoin.id, edges));
+        setEditingJoin(null);
+      }}
+      title="Join Settings"
+    >
       {currentNode && (
         <form onClick={handleFormSubmit} className="flex flex-col gap-3">
           <label htmlFor="join-target-entity">Table / Entity</label>

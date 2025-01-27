@@ -1,19 +1,13 @@
 "use client";
 
 import { ColumnEditor, JoinEditor } from "@/components/editors";
-import {
-  TableDataProps,
-  TableNode,
-} from "@/components/react-flow-custom/table-node";
+import { TableNode } from "@/components/flow-nodes/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
 import { EditorContext } from "@/lib/context/editor-context";
+import { deleteNodes, updateNodes } from "@/lib/flow-editors/nodes";
 import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
 import { extractTypeORMEntities } from "@/utils/helpers";
-import type {
-  ColumnProps,
-  JoinProps,
-  TableProps,
-} from "@/utils/types/database-types";
+import type { JoinProps, TableProps } from "@/utils/types/database-types";
 import { Editor, Monaco } from "@monaco-editor/react";
 import {
   addEdge,
@@ -174,21 +168,12 @@ function App() {
 
           setNodes((nds) => {
             const newNodes: Node<TableProps>[] = [];
-            const changedNodes = applyNodeChanges<Node<TableProps>>(
-              editedNodes
-                .filter((node) => {
-                  const isReplacable = !!nds.find((n) => n.id === node.id);
-                  if (!isReplacable) newNodes.push(node);
-                  return isReplacable;
-                })
-                .map((node) => ({
-                  id: node.id,
-                  type: "replace",
-                  item: node,
-                })),
-              nds,
-            );
-            return [...changedNodes, ...newNodes];
+            editedNodes.filter((node) => {
+              const isReplacable = !!nds.find((n) => n.id === node.id);
+              if (!isReplacable) newNodes.push(node);
+              return isReplacable;
+            });
+            return updateNodes([...editedNodes, ...newNodes], nds);
           });
         } catch (e) {
           console.log("⚠️ wasm error:", e);
@@ -228,33 +213,10 @@ function App() {
 
   // custom node crud
   const removeNode = (id: string) => {
-    setNodes((nds) =>
-      applyNodeChanges(
-        [
-          {
-            id,
-            type: "remove",
-          },
-        ],
-        nds,
-      ),
-    );
+    setNodes((nds) => deleteNodes(id, nds));
   };
   const editNode = (id: string, data: Partial<TableProps>) => {
-    setNodes((nds) => {
-      const node = nds.find((_node) => _node.id === id);
-      if (!node) return nds;
-      return applyNodeChanges<Node<TableProps>>(
-        [
-          {
-            id,
-            type: "replace",
-            item: { ...node, data: { ...node.data, ...data } },
-          },
-        ],
-        nds,
-      );
-    });
+    setNodes((nds) => updateNodes({ ...data, id }, nds));
   };
   const appendNode = () => {
     const id = nanoid();
@@ -289,16 +251,7 @@ function App() {
         return editingColumn;
       });
 
-      return applyNodeChanges<Node<TableProps>>(
-        [
-          {
-            id: node.id,
-            type: "replace",
-            item: { ...node, data: { ...node.data, columns: columns } },
-          },
-        ],
-        nds,
-      );
+      return updateNodes({ id: node.id, columns }, nodes);
     });
   }, [editingColumn]);
 
@@ -364,58 +317,29 @@ function App() {
       if (sourceNode.id === targetNode.id) {
         // self join.
         newJoin.source === sourceNode.id;
-        return applyNodeChanges<Node<TableProps>>(
-          [
-            {
-              id: sourceNode.id,
-              type: "replace",
-              item: {
-                ...sourceNode,
-                data: {
-                  ...sourceNode.data,
-                  joins: [...sourceNode.data.joins, newJoin],
-                },
-              },
-            },
-          ],
+        return updateNodes(
+          { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
           nds,
         );
       }
-      // join to other tables.
-      return applyNodeChanges<Node<TableProps>>(
+      // other join.
+      return updateNodes(
         [
-          {
-            id: sourceNode.id,
-            type: "replace",
-            item: {
-              ...sourceNode,
-              data: {
-                ...sourceNode.data,
-                joins: [...sourceNode.data.joins, newJoin],
-              },
-            },
-          },
+          { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
           {
             id: targetNode.id,
-            type: "replace",
-            item: {
-              ...targetNode,
-              data: {
-                ...targetNode.data,
-                joins: [
-                  ...targetNode.data.joins,
-                  {
-                    id: baseEdgeId,
-                    target: null,
-                    source: connection.source,
-                    onDelete: "CASCADE",
-                    onUpdate: "CASCADE",
-                    through: null,
-                    type: "one-to-one",
-                  },
-                ],
+            joins: [
+              ...targetNode.data.joins,
+              {
+                id: baseEdgeId,
+                target: null,
+                source: connection.source,
+                onDelete: "CASCADE",
+                onUpdate: "CASCADE",
+                through: null,
+                type: "one-to-one",
               },
-            },
+            ],
           },
         ],
         nds,
