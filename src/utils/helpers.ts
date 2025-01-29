@@ -17,30 +17,26 @@ export function classNames(...classes: string[]) {
  */
 export function extractTypeORMEntities(code: string) {
   let splitCode = code.split("@Entity()");
+  const classRegex = /export\s+class\s+(\w+)/;
+  const propertyRegex = /((@\w+\([^)]*\)\s*)+)(\w+:\s+\w+;)/g;
 
   splitCode = splitCode
     .filter((c) => c.trim().startsWith("export class"))
-    .map((c) => {
-      // Use a regular expression to match the property declarations
-      const regex = /(@\w+\(\s*\))\s*(\w+:\s+\w+;)/g;
-      // const regex = /(@\w+\s*\(.*?\)\s*)(\w+:\s+\w+;)/g;
+    .map((entity) => {
+      // Extract class name
+      const classMatch = entity.match(classRegex);
+      const className = classMatch ? classMatch[1] : "Unknown"; // Default to "Unknown" if not found
 
-      // Replace the matched patterns with the desired format
-      const output = c.replace(regex, "$1 $2");
+      const matchedProperties = [...entity.matchAll(propertyRegex)];
 
-      return "@Entity()" + output;
+      const formattedProperties = matchedProperties.map(
+        (match) => `${match[1].trim().replace(/\n/g, "")} ${match[3]}`,
+      );
+
+      return `export class ${className} {\n  ${formattedProperties.join("\n  ")}\n}`;
     });
 
   return splitCode;
-  // const entityRegex = /(@Entity\(\)\s+export class \w+ \{[^]*?\})/g;
-  // const entities: string[] = [];
-  // let match;
-
-  // while ((match = entityRegex.exec(code)) !== null) {
-  //   entities.push(match[1].trim()); // Push the full class declaration
-  // }
-
-  // return entities;
 }
 
 /**

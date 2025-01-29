@@ -147,7 +147,7 @@ function App() {
           console.log("entities:", entities);
 
           const editedNodes: Node<TableProps>[] = [];
-          // TODO: foreign key adaptation.
+
           entities.forEach((entity, index) => {
             const result = wasm.convert_from_typeorm(entity);
             const node = JSON.parse(result) as Node<TableProps>;
@@ -173,7 +173,19 @@ function App() {
               if (!isReplacable) newNodes.push(node);
               return isReplacable;
             });
-            return updateNodes([...editedNodes, ...newNodes], nds);
+
+            console.log(editedNodes);
+            return [
+              ...newNodes,
+              ...applyNodeChanges(
+                editedNodes.map((node) => ({
+                  id: node.id,
+                  type: "replace",
+                  item: node,
+                })),
+                nds,
+              ),
+            ];
           });
         } catch (e) {
           console.log("⚠️ wasm error:", e);
@@ -200,7 +212,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    console.log(compileNodes.current);
     if (!wasmModule || !compileNodes.current) return;
     debouncedCompileToTypeORM(wasmModule, nodes);
   }, [wasmModule, nodes]);
@@ -260,8 +271,6 @@ function App() {
     (changes) => {
       const change = changes[0];
 
-      console.log(change);
-
       if (change?.type === "select" && change?.selected) {
         let join: JoinProps | null = null;
 
@@ -285,8 +294,6 @@ function App() {
     [nodes],
   );
   const onConnect: OnConnect = useCallback((connection) => {
-    console.log(connection);
-
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
     const baseEdgeId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
 
