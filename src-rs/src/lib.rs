@@ -1,9 +1,10 @@
+mod helpers;
+
 use regex::Regex;
 use serde_json::json;
 use serde_json::Value;
 // use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 
 #[wasm_bindgen]
 pub fn convert_to_typeorm(json_str: &str) -> String {
@@ -19,23 +20,31 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
     for column in columns {
         let column_name = column["name"].as_str().unwrap_or("").to_string();
         let db_name = column["dbName"].as_str().unwrap_or("").to_string();
-        let default_value = column["defaultValue"].as_str().unwrap_or("").to_string();
         let data_type = column["dataType"].as_str().unwrap_or("string");
-        let is_nullable = column["nullable"].as_bool().unwrap_or(false);
         let is_primary = column["id"] == data["data"]["primaryKey"];
         let is_index = column["index"].as_bool().unwrap_or(false);
         let is_unique = column["unique"].as_bool().unwrap_or(false);
-        let is_auto_increment = column["autoIncrement"].as_bool().unwrap_or(false);
+        let is_nullable = column["nullable"].as_bool().unwrap_or(false);
+        let default_value = column["defaultValue"].as_str().unwrap_or("").to_string();
         let length = column["length"].as_u64();
         let precision = column["precision"].as_u64().unwrap_or(0);
         let scale = column["scale"].as_u64().unwrap_or(0);
-
-        // // Convert the column object to a JSON string
-        // let column_json = serde_json::to_string_pretty(column)
-        //     .unwrap_or_else(|_| "Failed to serialize column".to_string());
-
-        // // Log the JSON string to the console
-        // console::log_1(&column_json.into());
+        let collation = column["collation"].as_str().unwrap_or("").to_string();
+        let is_auto_increment = column["autoIncrement"].as_bool().unwrap_or(false);
+        let select = column["select"].as_bool().unwrap_or(true);
+        let zerofill = column["zerofill"].as_bool().unwrap_or(false);
+        let column_enum_vec: Vec<String> = column["enum"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|val| val.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_else(Vec::new); // Use unwrap_or_else to avoid unnecessary allocation
+        let column_enum: &Vec<String> = &column_enum_vec; // Reference the stable variable
+        let column_enum_name = column["enumName"].as_str().unwrap_or("");
+        let hstore_type = column["hstoreType"].as_str().unwrap_or("").to_string();
+        let is_array = column["array"].as_bool().unwrap_or(false);
 
         // Check for foreign key
         let foreign_key = column["foreignKey"].as_object();
@@ -124,40 +133,50 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 
             column_decorator.push_str("@Column({ ");
 
-            // Add database name
             if !db_name.is_empty() {
                 column_decorator.push_str(&format!("name: \"{}\", ", db_name));
             }
-
-            // Add data type
             column_decorator.push_str(&format!("type: \"{}\"", data_type));
-
-            // Add length
+            if is_unique {
+                column_decorator.push_str(", unique: true");
+            }
+            if is_nullable {
+                column_decorator.push_str(", nullable: true");
+            }
+            if !default_value.is_empty() {
+                column_decorator.push_str(&format!(", default: \"{}\"", default_value));
+            }
             if let Some(len) = length {
                 column_decorator.push_str(&format!(", length: {}", len));
             }
-
-            // Add precision and scale
             if precision > 0 {
                 column_decorator.push_str(&format!(", precision: {}", precision));
             }
             if scale > 0 {
                 column_decorator.push_str(&format!(", scale: {}", scale));
             }
-
-            // Add nullable
-            if is_nullable {
-                column_decorator.push_str(", nullable: true");
+            if !collation.is_empty() {
+                column_decorator.push_str(&format!(", collation: \"{}\"", collation));
             }
-
-            // Add unique
-            if is_unique {
-                column_decorator.push_str(", unique: true");
+            if !select {
+                column_decorator.push_str(", select: false");
             }
-
-            // Add default value
-            if !default_value.is_empty() {
-                column_decorator.push_str(&format!(", default: \"{}\"", default_value));
+            /* MySQL Options */
+            if zerofill {
+                column_decorator.push_str(", zerofill: true");
+            }
+            if column_enum.len() > 0 {
+                column_decorator
+                    .push_str(&format!(", enum: \"[\"{}\"]\"", column_enum.join("\", \"")));
+            }
+            if !column_enum_name.is_empty() {
+                column_decorator.push_str(&format!(", enumName: \"{}\"", column_enum_name));
+            }
+            if !hstore_type.is_empty() {
+                column_decorator.push_str(&format!(", hstoreType: \"{}\"", hstore_type));
+            }
+            if !is_array {
+                column_decorator.push_str(", array: true");
             }
 
             column_decorator.push_str(" })");
@@ -194,25 +213,22 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 
     let entity_regex = Regex::new(r"export class (\w+) \{").unwrap();
 
-    // Regex for @Column without options
-    let column_basic_regex = Regex::new(r"@Column\(\)\s*(\w+): ([\w<>, |]+);").unwrap();
-    // Regex for @Column with options
-    let column_with_options_regex =
-        Regex::new(r"@Column\(\s*([^)]*)\s*\)\s*(\w+): ([\w<>, |]+);").unwrap();
+    // Regex for column name and type e.g. `name: string;`
+    let column_name_type_regex = Regex::new(r"(\w+): ([\w<>, |]+)").unwrap();
 
-    // Regex for @Column without options
-    let primary_key_column_basic_regex =
-        Regex::new(r"@PrimaryGeneratedColumn\(\)\s*(\w+): ([\w<>, |]+);").unwrap();
-    // Regex for @Column with options
-    let primary_key_column_with_options_regex =
-        Regex::new(r"@PrimaryGeneratedColumn\(\s*([^)]*)\s*\)\s*(\w+): ([\w<>, |]+);").unwrap();
+    // Regex for `@Column` with options
+    let column_with_options_regex = Regex::new(r"@Column\(\s*([^)]*)\s*\)").unwrap();
 
-    let many_to_one_regex = Regex::new(r"@ManyToOne\(([^)]+)?\)").unwrap();
-    let one_to_many_regex = Regex::new(r"@OneToMany\(([^)]+)?\)").unwrap();
-    let many_to_many_regex = Regex::new(r"@ManyToMany\(([^)]+)?\)").unwrap();
-    let one_to_one_regex = Regex::new(r"@OneToOne\(([^)]+)?\)").unwrap();
-    let join_column_regex = Regex::new(r"@JoinColumn\(\{([^}]+)\}\)").unwrap();
-    let join_table_regex = Regex::new(r"@JoinTable\(\{([^}]+)\}\)").unwrap();
+    // Regex for `@PrimaryGeneratedColumn` with options
+    let primary_key_with_options_regex =
+        Regex::new(r"@PrimaryGeneratedColumn\(\s*([^)]*)\s*\)").unwrap();
+
+    let many_to_one_regex = Regex::new(r"@ManyToOne\((.*(?:\([^)]*\))?.*)\)").unwrap();
+    // let one_to_many_regex = Regex::new(r"@OneToMany\(([^)]+)?\)").unwrap();
+    // let many_to_many_regex = Regex::new(r"@ManyToMany\(([^)]+)?\)").unwrap();
+    // let one_to_one_regex = Regex::new(r"@OneToOne\(([^)]+)?\)").unwrap();
+    // let join_column_regex = Regex::new(r"@JoinColumn\(\{([^}]+)\}\)").unwrap();
+    // let join_table_regex = Regex::new(r"@JoinTable\(\{([^}]+)\}\)").unwrap();
 
     let lines: Vec<&str> = typeorm_code.lines().collect();
 
@@ -228,7 +244,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 
     for line in lines {
         let line = line.trim();
-        console::log_1(&format!("Processing line: {}", line).into());
 
         if !found_entity {
             // Check for the single entity class definition
@@ -241,114 +256,142 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
         }
 
         let mut found_column = false;
+        let mut is_primary = false;
+
         let mut column_name = String::new();
         let mut data_type = String::new();
         let mut column_options = String::new();
 
-        // Check for columns without options
-        if let Some(caps) = column_basic_regex.captures(line) {
-            column_name = caps[1].to_string();
-            data_type = caps[2].to_string();
-            found_column = true;
-            println!("Found column: {} with type: {}", column_name, data_type);
-        }
+        let is_index = line.contains("@Index()");
 
-        // Check for columns with options
-        if let Some(caps) = column_with_options_regex.captures(line) {
-            column_options = caps[1].to_string();
-            column_name = caps[2].to_string();
-            data_type = caps[3].to_string();
+        if line.contains("@Column") {
+            // basic column here.
             found_column = true;
-            println!(
-                "Found column with options: {} with type: {}",
-                column_name, data_type
-            );
-            println!("Options: {}", column_options);
-        }
 
-        // Check for columns without options
-        if let Some(caps) = primary_key_column_basic_regex.captures(line) {
-            column_name = caps[1].to_string();
-            data_type = caps[2].to_string();
-            found_column = true;
-            println!("Found column: {} with type: {}", column_name, data_type);
-        }
-
-        // Check for columns with options
-        if let Some(caps) = primary_key_column_with_options_regex.captures(line) {
-            column_options = caps[1].to_string();
-            column_name = caps[2].to_string();
-            data_type = caps[3].to_string();
-            found_column = true;
-            println!(
-                "Found column with options: {} with type: {}",
-                column_name, data_type
-            );
-            println!("Options: {}", column_options);
-        }
-
-        // Handle case where @Column() is followed by the column on the next line
-        if line.contains(":") && !line.contains("@Column") {
-            if !column_name.is_empty() && !data_type.is_empty() {
-                println!("Column: {} with type: {}", column_name, data_type);
-                println!("Options: {}", column_options);
-                column_name.clear();
-                data_type.clear();
-                column_options.clear();
+            println!("Found a basic column: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
             }
+
+            // Check for options
+            if let Some(caps) = column_with_options_regex.captures(line) {
+                column_options = caps[1].to_string();
+            }
+        }
+
+        if line.contains("@PrimaryGeneratedColumn") {
+            // primary key here.
+            found_column = true;
+            is_primary = true;
+
+            println!("Found a primary key: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
+            }
+
+            // Check for options
+            if let Some(caps) = primary_key_with_options_regex.captures(line) {
+                column_options = caps[1].to_string();
+            }
+        }
+
+        // Extract @ManyToOne relationships
+        if let Some(_caps) = many_to_one_regex.captures(line) {
+            // match for `@JoinColumn()` and build foreign key settings.
+            current_foreign_key["type"] = json!("many-to-one");
+            found_column = true;
         }
 
         // Extract columns
         if found_column {
-            // let column_options = caps.get(1).map(|m| m.as_str()).unwrap_or("{}");
-            // let column_name = &caps[2];
-            // let data_type = &caps[3];
-
-            // Log the column details being processed
-            console::log_1(
-                &format!(
-                    "Found column - Name: {}, Type: {}, Options: {}",
-                    column_name, data_type, column_options
-                )
-                .into(),
-            );
-
             let mut column_object = json!({
                 "name": column_name,
                 "dbName": column_name,
                 "dataType": data_type,
-                "primaryKey": false,
-                "index": false,
+                "primaryKey": is_primary,
+                "index": is_index,
                 "unique": false,
                 "nullable": false,
                 "defaultValue": null,
-                "length": 0,
+                "length": 255,
                 "precision": null,
                 "scale": null,
-                "collation": "",
+                "collation": null,
                 "description": "",
                 "autoIncrement": false,
                 "foreignKey": null,
+                "select": true,
+                "zerofill": false,
+                "enum": null,
+                "enumName": null,
+                "hstoreType": null,
+                "array": false
             });
 
-            // Parse column options
-            let options_json: serde_json::Value =
-                serde_json::from_str(&column_options).unwrap_or_else(|_| json!({}));
+            if is_primary {
+                // column_options is string for data type
+                if column_options.is_empty() {
+                    column_options = "number".to_string();
+                } else {
+                    column_options = helpers::trim_quotes(&column_options).to_string();
+                }
 
-            if let Some(obj) = options_json.as_object() {
-                for (key, value) in obj {
-                    match key.as_str() {
-                        "name" => column_object["dbName"] = value.clone(),
-                        "type" => column_object["dataType"] = value.clone(),
-                        "nullable" => column_object["nullable"] = value.clone(),
-                        "unique" => column_object["unique"] = value.clone(),
-                        "default" => column_object["defaultValue"] = value.clone(),
-                        "length" => column_object["length"] = value.clone(),
-                        "precision" => column_object["precision"] = value.clone(),
-                        "scale" => column_object["scale"] = value.clone(),
-                        "autoIncrement" => column_object["autoIncrement"] = value.clone(),
-                        "index" => column_object["index"] = value.clone(),
-                        _ => {}
+                if let Some(obj) = column_object.as_object_mut() {
+                    obj.insert("dataType".to_string(), json!(column_options));
+                } else {
+                    println!("column_object is not an object");
+                }
+            } else if current_foreign_key["type"] != json!(null) {
+                // TODO: foreign and joins
+                column_object
+                    .as_object_mut()
+                    .unwrap()
+                    .insert("foreignKey".to_string(), json!(current_foreign_key));
+            } else {
+                // parse basic column options
+                println!("column options: {}", column_options);
+                let options_json = helpers::parse_json(column_options.as_str());
+                println!("parsed column options: {:?}", options_json);
+
+                if let Some(obj) = options_json.as_object() {
+                    for (key, value) in obj {
+                        match key.as_str() {
+                            "name" => column_object["dbName"] = value.clone(),
+                            "type" => column_object["dataType"] = value.clone(),
+                            "index" => column_object["index"] = value.clone(),
+                            "unique" => column_object["unique"] = value.clone(),
+                            "nullable" => column_object["nullable"] = value.clone(),
+                            "default" => column_object["defaultValue"] = value.clone(),
+                            "length" => column_object["length"] = value.clone(),
+                            "precision" => column_object["precision"] = value.clone(),
+                            "scale" => column_object["scale"] = value.clone(),
+                            "collation" => column_object["collation"] = value.clone(),
+                            "autoIncrement" => column_object["autoIncrement"] = value.clone(),
+                            "select" => column_object["select"] = value.clone(),
+                            "zerofill" => column_object["zerofill"] = value.clone(),
+                            "enum" => {
+                                column_object["enum"] = value
+                                    .clone()
+                                    .to_string()
+                                    .split(",")
+                                    .map(|s| Value::String(s.to_string())) // Convert each item to Value::String
+                                    .collect()
+                            }
+                            "enumName" => column_object["enumName"] = value.clone(),
+                            "hstoreType" => column_object["hstoreType"] = value.clone(),
+                            "array" => column_object["array"] = value.clone(),
+                            _ => {}
+                        }
                     }
                 }
             }
@@ -358,66 +401,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                 .as_array_mut()
                 .unwrap()
                 .push(column_object);
-        }
-
-        // Extract @ManyToOne relationships
-        if let Some(_caps) = many_to_one_regex.captures(line) {
-            current_foreign_key["type"] = json!("many-to-one");
-        }
-
-        // Extract @OneToMany relationships
-        if let Some(_caps) = one_to_many_regex.captures(line) {
-            current_foreign_key["type"] = json!("one-to-many");
-        }
-
-        // Extract @ManyToMany relationships
-        if let Some(_caps) = many_to_many_regex.captures(line) {
-            current_foreign_key["type"] = json!("many-to-many");
-        }
-
-        // Extract @OneToOne relationships
-        if let Some(_caps) = one_to_one_regex.captures(line) {
-            current_foreign_key["type"] = json!("one-to-one");
-        }
-
-        // Extract @JoinColumn
-        if let Some(caps) = join_column_regex.captures(line) {
-            let join_options = &caps[1];
-            for option in join_options.split(',') {
-                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
-                if parts.len() == 2 {
-                    match parts[0] {
-                        "name" => {
-                            current_foreign_key["source"] = json!({
-                                "tableName": table_object["data"]["name"],
-                                "columnName": parts[1].trim_matches('"')
-                            });
-                        }
-                        "referencedColumnName" => {
-                            if let Some(target) = current_foreign_key["target"].as_object_mut() {
-                                target["columnName"] = json!(parts[1].trim_matches('"'));
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        // Extract @JoinTable
-        if let Some(caps) = join_table_regex.captures(line) {
-            let join_options = &caps[1];
-            for option in join_options.split(',') {
-                let parts: Vec<&str> = option.split(':').map(|s| s.trim()).collect();
-                if parts.len() == 2 {
-                    match parts[0] {
-                        "name" => {
-                            current_foreign_key["through"] = json!(parts[1].trim_matches('"'));
-                        }
-                        _ => {}
-                    }
-                }
-            }
         }
 
         // Add the foreign key object to the joins array when complete
@@ -437,8 +420,22 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                 "type": null
             });
         }
+
+        println!("--------");
     }
 
     // Return the table object as a JSON string
     serde_json::to_string(&table_object).unwrap()
+}
+
+fn main() {
+    let test_entity = r#"
+    export class Product {
+       @PrimaryGeneratedColumn("uuid")  @Index() id: string;
+      @Column({ default: "Sample" })  @Index() name: string;
+      @Column( { nullable: true, default: 1 } ) price: number;
+    }"#;
+
+    let result = convert_from_typeorm(test_entity);
+    println!("{}", result);
 }
