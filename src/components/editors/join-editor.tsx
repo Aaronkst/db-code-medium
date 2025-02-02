@@ -6,6 +6,7 @@ import {
   deselectEdges,
   updateNodes,
 } from "@/lib/flow-editors/nodes";
+import { getDefaultColumn } from "@/utils/constants";
 import type {
   ColumnProps,
   JoinProps,
@@ -79,25 +80,16 @@ export function JoinEditor() {
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
-      const newColumn = {
-        id: nanoid(),
-        table: currentNode.data.id,
+      const newColumn = getDefaultColumn(nanoid(), currentNode.data.id, {
         name: (targetTable.data.name || targetTable.data.id) + "Id",
         dbName: (targetTable.data.name || targetTable.data.id) + "_id",
         dataType: targetCol.dataType,
-        primaryKey: false,
-        index: false,
-        unique: false,
-        nullable: false,
-        defaultValue: null,
         length: targetCol.length,
         precision: targetCol.precision,
         scale: targetCol.scale,
         collation: targetCol.collation,
-        description: "",
-        autoIncrement: false,
         foreignKey: editingJoin,
-      };
+      });
 
       // apply join updates
       setNodes((nds) => {
