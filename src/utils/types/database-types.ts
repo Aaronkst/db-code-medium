@@ -11,7 +11,7 @@ export type TableProps = {
   primaryKey: string; // col id
   description: string;
   timestamps: boolean;
-  engine: "InnoDB" | "MyISAM"; // only for MySQL
+  engine: "InnoDB" | "MyISAM"; // MySQL only
   columns: ColumnProps[];
   joins: JoinProps[];
 };
@@ -41,6 +41,12 @@ export type ColumnProps = {
   description: string;
   autoIncrement: boolean; // defaults false
   foreignKey: JoinProps | null;
+  select: boolean;
+  zerofill: boolean; // MySQL only
+  enum: string[] | null;
+  enumName: string | null;
+  hstoreType: "object" | "string" | null; // Postgres only
+  array: boolean; // Postgres, cockroachdb
 };
 
 export type JoinProps = {

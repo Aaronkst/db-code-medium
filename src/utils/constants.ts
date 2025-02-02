@@ -24,6 +24,12 @@ export const getDefaultColumn = (
   description: "",
   autoIncrement: false,
   foreignKey: null,
+  select: true,
+  zerofill: false,
+  enum: null,
+  enumName: null,
+  hstoreType: "string",
+  array: false,
   ...columnProps,
 });
 
@@ -63,15 +69,5 @@ export const getDefaultTable = (
 
 // Monaco imports
 export const TYPEORM_IMPORTS = `import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    Index,
-    JoinColumn,
-    JoinTable,
-    ManyToMany,
-    ManyToOne,
-    OneToMany,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
+
 } from "typeorm"`;
