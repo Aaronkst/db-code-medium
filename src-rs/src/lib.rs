@@ -310,6 +310,23 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
             }
         }
 
+        // Extract @OneToOne relationships
+        if line.contains("@OneToOne") {
+            // foreign key.
+            found_column = true;
+            current_foreign_key["type"] = json!("one-to-one");
+
+            println!("Found a many-to-one key: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
+            }
+        }
+
         // Extract @ManyToOne relationships
         if line.contains("@ManyToOne") {
             // foreign key.
@@ -325,7 +342,43 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                     data_type = content.as_str().into();
                 }
             }
+        }
 
+        // Extract @OneToMany relationships
+        if line.contains("@OneToMany") {
+            // foreign key.
+            found_column = true;
+            current_foreign_key["type"] = json!("one-to-many");
+
+            println!("Found a many-to-one key: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
+            }
+        }
+
+        // Extract @ManyToMany relationships
+        if line.contains("@ManyToMany") {
+            // foreign key.
+            found_column = true;
+            current_foreign_key["type"] = json!("many-to-many");
+
+            println!("Found a many-to-one key: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
+            }
+        }
+
+        if current_foreign_key["type"] != json!(null) {
             let mut target_table = "".to_string();
             let mut target_column = "".to_string();
 
@@ -338,8 +391,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
             };
 
             current_foreign_key["target"] = json!({
-                // "table": table_name_caps[1].to_string(),
-                // "column": column_name_caps[3].to_string()
                 "table": target_table,
                 "column": target_column
             });
@@ -358,21 +409,12 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                     }
                 }
             }
-
-            println!(
-                "foreign key options: {}",
-                serde_json::to_string(&current_foreign_key).unwrap()
-            );
-
-            // join column props
-            if line.contains("@JoinColumn") {
-                if let Some(caps) = join_column_with_options_regex.captures(line) {
-                    column_options = caps[1].to_string();
-                }
-
-                println!("found options here - {}", column_options)
-            }
         }
+
+        println!(
+            "foreign key options: {}",
+            serde_json::to_string(&current_foreign_key).unwrap()
+        );
 
         // Extract columns
         if found_column {
@@ -403,8 +445,7 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
             });
 
             if is_primary {
-                // column_options is string for data type
-
+                // column_options is string for data type2_
                 table_object["data"]["primaryKey"] = json!(column_id);
 
                 if column_options.is_empty() {
@@ -419,6 +460,54 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                     println!("column_object is not an object");
                 }
             } else if current_foreign_key["type"] != json!(null) {
+                // join column props
+                if line.contains("@JoinColumn") {
+                    if let Some(caps) = join_column_with_options_regex.captures(line) {
+                        column_options = caps[1].to_string();
+                    }
+                    println!("join column options: {}", column_options);
+                    let options_json = helpers::parse_json(column_options.as_str());
+                    if let Some(obj) = options_json.as_object() {
+                        for (key, value) in obj {
+                            match key.as_str() {
+                                "name" => column_object["dbName"] = value.clone(),
+                                "referencedColumnName" => {
+                                    current_foreign_key["target"]["column"] = value.clone()
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+
+                // join table props
+                if line.contains("@JoinTable") {
+                    if let Some(caps) = join_table_with_options_regex.captures(line) {
+                        column_options = caps[1].to_string();
+                    }
+                    println!("join table options: {}", column_options);
+                    let options_json = helpers::parse_json(column_options.as_str());
+                    if let Some(obj) = options_json.as_object() {
+                        for (key, value) in obj {
+                            match key.as_str() {
+                                "name" => current_foreign_key["through"] = value.clone(),
+                                "joinColumn" => {
+                                    current_foreign_key["target"]["column"] =
+                                        value["referencedColumnName"].clone();
+                                    column_object["dbName"] = value["name"].clone()
+                                }
+                                "inverseJoinColumn" => {
+                                    current_foreign_key["inverseColumn"]["dbName"] =
+                                        value["name"].clone();
+                                    current_foreign_key["inverseColumn"]["value"] =
+                                        value["referencedColumnName"].clone();
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+
                 column_object
                     .as_object_mut()
                     .unwrap()
@@ -427,7 +516,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                 // parse basic column options
                 println!("column options: {}", column_options);
                 let options_json = helpers::parse_json(column_options.as_str());
-                println!("parsed column options: {:?}", options_json);
 
                 if let Some(obj) = options_json.as_object() {
                     for (key, value) in obj {
@@ -495,13 +583,14 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 }
 
 fn main() {
+    // TODO: more testings.
     let test_entity = r#"
     export class Product {
         @PrimaryGeneratedColumn("uuid")  @Index() id: string;
         @Column({ default: "Sample" })  @Index() name: string;
         @Column( { nullable: true, default: 1 } ) price: number;
-        @ManyToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) abcdef: Abcdef;
-        @ManyToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinColumn({name: "abcdef_id"}) abcdef: Abcdef;
+        @ManyToMany(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinTable({name: "owner_target"}) abcdef: Abcdef;
+        @OneToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinColumn({name: "abcdef_id"}) abcdef: Abcdef;
     }"#;
 
     let result = convert_from_typeorm(test_entity);
