@@ -1,5 +1,6 @@
 mod helpers;
 
+use nanoid::nanoid;
 use regex::Regex;
 use serde_json::json;
 use serde_json::Value;
@@ -198,6 +199,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 #[wasm_bindgen]
 pub fn convert_from_typeorm(typeorm_code: &str) -> String {
     let mut table_object = json!({
+        "id": nanoid!(),
         "type": "table",
         "data": {
             "name": "",
@@ -211,6 +213,8 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
         },
     });
 
+    let mut table_ids = json!({});
+
     let entity_regex = Regex::new(r"export class (\w+) \{").unwrap();
 
     // Regex for column name and type e.g. `name: string;`
@@ -223,12 +227,13 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
     let primary_key_with_options_regex =
         Regex::new(r"@PrimaryGeneratedColumn\(\s*([^)]*)\s*\)").unwrap();
 
-    let many_to_one_regex = Regex::new(r"@ManyToOne\((.*(?:\([^)]*\))?.*)\)").unwrap();
-    // let one_to_many_regex = Regex::new(r"@OneToMany\(([^)]+)?\)").unwrap();
-    // let many_to_many_regex = Regex::new(r"@ManyToMany\(([^)]+)?\)").unwrap();
-    // let one_to_one_regex = Regex::new(r"@OneToOne\(([^)]+)?\)").unwrap();
-    // let join_column_regex = Regex::new(r"@JoinColumn\(\{([^}]+)\}\)").unwrap();
-    // let join_table_regex = Regex::new(r"@JoinTable\(\{([^}]+)\}\)").unwrap();
+    // Regexes to extract options from join decorators
+    let target_table_regex = Regex::new(r"\(\s*\)\s*=>\s*(\w+)").unwrap();
+    let target_column_regex = Regex::new(r"\((\w+)\)\s*=>\s*(\w+).(\w+)").unwrap();
+    let join_options_regex = Regex::new(r",\s*\{\s*([^)]*)\s*\}").unwrap();
+
+    let join_column_with_options_regex = Regex::new(r"@JoinColumn\(\s*([^)]*)\s*\)").unwrap();
+    let join_table_with_options_regex = Regex::new(r"@JoinTable\(\s*([^)]*)\s*\)").unwrap();
 
     let lines: Vec<&str> = typeorm_code.lines().collect();
 
@@ -264,8 +269,8 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 
         let is_index = line.contains("@Index()");
 
+        // basic column.
         if line.contains("@Column") {
-            // basic column here.
             found_column = true;
 
             println!("Found a basic column: {}", line);
@@ -284,8 +289,8 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
             }
         }
 
+        // primary key.
         if line.contains("@PrimaryGeneratedColumn") {
-            // primary key here.
             found_column = true;
             is_primary = true;
 
@@ -306,15 +311,74 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
         }
 
         // Extract @ManyToOne relationships
-        if let Some(_caps) = many_to_one_regex.captures(line) {
-            // match for `@JoinColumn()` and build foreign key settings.
-            current_foreign_key["type"] = json!("many-to-one");
+        if line.contains("@ManyToOne") {
+            // foreign key.
             found_column = true;
+            current_foreign_key["type"] = json!("many-to-one");
+
+            println!("Found a many-to-one key: {}", line);
+            if let Some(caps) = column_name_type_regex.captures_iter(line).last() {
+                if let Some(content) = caps.get(1) {
+                    column_name = content.as_str().into();
+                }
+                if let Some(content) = caps.get(2) {
+                    data_type = content.as_str().into();
+                }
+            }
+
+            let mut target_table = "".to_string();
+            let mut target_column = "".to_string();
+
+            if let Some(caps) = target_table_regex.captures(line) {
+                target_table = caps[1].to_string()
+            }
+
+            if let Some(caps) = target_column_regex.captures(line) {
+                target_column = caps[3].to_string()
+            };
+
+            current_foreign_key["target"] = json!({
+                // "table": table_name_caps[1].to_string(),
+                // "column": column_name_caps[3].to_string()
+                "table": target_table,
+                "column": target_column
+            });
+
+            if let Some(caps) = join_options_regex.captures(line) {
+                let options = "{".to_owned() + caps[1].to_string().as_str() + "}";
+                let options_json = helpers::parse_json(options.as_str());
+
+                if let Some(obj) = options_json.as_object() {
+                    for (key, value) in obj {
+                        match key.as_str() {
+                            "onDelete" => current_foreign_key["onDelete"] = value.clone(),
+                            "onUpdate" => current_foreign_key["onUpdate"] = value.clone(),
+                            _ => {}
+                        }
+                    }
+                }
+            }
+
+            println!(
+                "foreign key options: {}",
+                serde_json::to_string(&current_foreign_key).unwrap()
+            );
+
+            // join column props
+            if line.contains("@JoinColumn") {
+                if let Some(caps) = join_column_with_options_regex.captures(line) {
+                    column_options = caps[1].to_string();
+                }
+
+                println!("found options here - {}", column_options)
+            }
         }
 
         // Extract columns
         if found_column {
+            let column_id = nanoid!();
             let mut column_object = json!({
+                "id": column_id,
                 "name": column_name,
                 "dbName": column_name,
                 "dataType": data_type,
@@ -340,6 +404,9 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 
             if is_primary {
                 // column_options is string for data type
+
+                table_object["data"]["primaryKey"] = json!(column_id);
+
                 if column_options.is_empty() {
                     column_options = "number".to_string();
                 } else {
@@ -352,7 +419,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
                     println!("column_object is not an object");
                 }
             } else if current_foreign_key["type"] != json!(null) {
-                // TODO: foreign and joins
                 column_object
                     .as_object_mut()
                     .unwrap()
@@ -431,9 +497,11 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
 fn main() {
     let test_entity = r#"
     export class Product {
-       @PrimaryGeneratedColumn("uuid")  @Index() id: string;
-      @Column({ default: "Sample" })  @Index() name: string;
-      @Column( { nullable: true, default: 1 } ) price: number;
+        @PrimaryGeneratedColumn("uuid")  @Index() id: string;
+        @Column({ default: "Sample" })  @Index() name: string;
+        @Column( { nullable: true, default: 1 } ) price: number;
+        @ManyToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) abcdef: Abcdef;
+        @ManyToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinColumn({name: "abcdef_id"}) abcdef: Abcdef;
     }"#;
 
     let result = convert_from_typeorm(test_entity);
