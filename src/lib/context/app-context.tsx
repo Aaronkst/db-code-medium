@@ -1,9 +1,6 @@
 "use client";
 
-import { createContext, useState } from "react";
-
-const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
-const currentTheme = prefersDarkScheme.matches ? "dark" : "light";
+import { createContext, useEffect, useState } from "react";
 
 type colorTheme = "dark" | "light" | "system";
 
@@ -17,7 +14,13 @@ const AppContext = createContext<{
 });
 
 const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [colorTheme, _setColorTheme] = useState<colorTheme>("system");
+  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("light");
+  const [colorTheme, _setColorTheme] = useState<colorTheme>("light");
+
+  useEffect(() => {
+    const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    setCurrentTheme(prefersDarkScheme.matches ? "dark" : "light");
+  }, []);
 
   function setColorTheme(theme: colorTheme) {
     _setColorTheme(theme === "system" ? currentTheme : theme);
