@@ -12,7 +12,8 @@ wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = ["console"] }
 regex = "1"
 nanoid = "0.4.0"
+getrandom = { version = "0.2", features = ["js"] }
 
-[[bin]]
-name = "test"
-path = "src/lib.rs"  # Specify the file you want to run
+# [[bin]]
+# name = "test"
+# path = "src/lib.rs"  # Specify the file you want to run

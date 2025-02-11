@@ -18,7 +18,7 @@ export function classNames(...classes: string[]) {
 export function extractTypeORMEntities(code: string) {
   let splitCode = code.split("@Entity()");
   const classRegex = /export\s+class\s+(\w+)/;
-  const propertyRegex = /((@\w+\([^)]*\)\s*)+)(\w+:\s+\w+;)/g;
+  const propertyRegex = /((@\w+\([^\n*]*\)\s*)+)(\w+:\s+\w+;)/g;
 
   splitCode = splitCode
     .filter((c) => c.trim().startsWith("export class"))

@@ -198,10 +198,12 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 
 #[wasm_bindgen]
 pub fn convert_from_typeorm(typeorm_code: &str) -> String {
+    let table_id = nanoid!();
     let mut table_object = json!({
-        "id": nanoid!(),
+        "id": table_id,
         "type": "table",
         "data": {
+            "id": table_id,
             "name": "",
             "dbName": "",
             "primaryKey": "",
@@ -212,8 +214,6 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
             "joins": []
         },
     });
-
-    let mut table_ids = json!({});
 
     let entity_regex = Regex::new(r"export class (\w+) \{").unwrap();
 
@@ -582,17 +582,17 @@ pub fn convert_from_typeorm(typeorm_code: &str) -> String {
     serde_json::to_string(&table_object).unwrap()
 }
 
-fn main() {
-    // TODO: more testings.
-    let test_entity = r#"
-    export class Product {
-        @PrimaryGeneratedColumn("uuid")  @Index() id: string;
-        @Column({ default: "Sample" })  @Index() name: string;
-        @Column( { nullable: true, default: 1 } ) price: number;
-        @ManyToMany(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinTable({name: "owner_target"}) abcdef: Abcdef;
-        @OneToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinColumn({name: "abcdef_id"}) abcdef: Abcdef;
-    }"#;
+// fn main() {
+//     // TODO: more testings.
+//     let test_entity = r#"
+//     export class Product {
+//         @PrimaryGeneratedColumn("uuid")  @Index() id: string;
+//         @Column({ default: "Sample" })  @Index() name: string;
+//         @Column( { nullable: true, default: 1 } ) price: number;
+//         @ManyToMany(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinTable({name: "owner_target"}) abcdef: Abcdef;
+//         @OneToOne(() => Abcdef, (Abcdef) => Abcdef.id, { nullable: true, onDelete: "SET NULL" }) @JoinColumn({name: "abcdef_id"}) abcdef: Abcdef;
+//     }"#;
 
-    let result = convert_from_typeorm(test_entity);
-    println!("{}", result);
-}
+//     let result = convert_from_typeorm(test_entity);
+//     println!("{}", result);
+// }

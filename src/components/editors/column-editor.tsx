@@ -33,16 +33,16 @@ export function ColumnEditor() {
   const { editingColumn, setEditingColumn, setEditingJoin } =
     useContext(EditorContext);
 
-  if (!editingColumn) return <></>;
-
   // TODO: handle `objectId` for mongodb.
   const dataTypeOpts = useMemo(
     () =>
-      editingColumn.primaryKey
+      editingColumn?.primaryKey
         ? [...dataTypes, { label: "UUID", value: "uuid" }]
         : dataTypes,
-    [editingColumn.primaryKey],
+    [editingColumn?.primaryKey],
   );
+
+  if (!editingColumn) return <></>;
 
   return (
     <form className="flex flex-col gap-3 p-2">

@@ -3,6 +3,7 @@
 import { ColumnEditor, JoinEditor } from "@/components/editors";
 import { TableNode } from "@/components/flow-nodes/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
+import { AppContext } from "@/lib/context/app-context";
 import { EditorContext } from "@/lib/context/editor-context";
 import { deleteNodes, updateNodes } from "@/lib/flow-editors/nodes";
 import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
@@ -60,6 +61,8 @@ function App() {
 
   const { nodes, setNodes, edges, setEdges, setEditingJoin, editingColumn } =
     useContext(EditorContext);
+
+  const { colorTheme } = useContext(AppContext);
 
   // editing pane controllers
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
@@ -165,6 +168,52 @@ function App() {
             node.data.onDelete = removeNode;
             editedNodes.push(node);
           });
+
+          let i = 0;
+          // loop through all nodes to append.
+          for (const node of [...editedNodes]) {
+            if (node.data.joins.length) {
+              // process all the joins
+              let j = 0;
+              for (const { target, ...join } of node.data.joins) {
+                if (target) {
+                  const targetTableIdx = editedNodes.findIndex(
+                    (n) => n.data.name === target.table,
+                  );
+                  if (targetTableIdx > -1) {
+                    const targetTable = editedNodes[targetTableIdx];
+                    const targetColumn = targetTable.data.columns.find(
+                      (col) => col.name === target.column,
+                    );
+
+                    if (targetColumn) {
+                      console.log("pushing a source from node:", node);
+
+                      // both the table and columns are found
+                      // append the source joins and edit the current join with the actual ids.
+                      editedNodes[targetTableIdx].data.joins.push({
+                        id: "", // TODO: work on a proper xy-edge__ renderable id.
+                        target: null,
+                        onDelete: join.onDelete,
+                        onUpdate: join.onUpdate,
+                        through: join.through,
+                        source: node.data.id,
+                        inverseColumn: null,
+                        type: join.type,
+                      });
+
+                      editedNodes[i].data.joins[j].target!.table =
+                        targetTable.id;
+                      editedNodes[i].data.joins[j].target!.column =
+                        targetColumn.id;
+                    }
+                  }
+                }
+                j++;
+              }
+            }
+            i++;
+          }
 
           setNodes((nds) => {
             const newNodes: Node<TableProps>[] = [];
@@ -319,6 +368,7 @@ function App() {
         onUpdate: "CASCADE",
         through: null,
         type: "one-to-one",
+        inverseColumn: null,
       };
 
       if (sourceNode.id === targetNode.id) {
@@ -345,6 +395,7 @@ function App() {
                 onUpdate: "CASCADE",
                 through: null,
                 type: "one-to-one",
+                inverseColumn: null,
               },
             ],
           },
@@ -367,6 +418,7 @@ function App() {
       onUpdate: "CASCADE",
       through: null,
       type: "one-to-one",
+      inverseColumn: null,
     });
   }, []);
 
@@ -407,7 +459,7 @@ function App() {
     <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
       <Panel
         defaultSize={0}
-        className="bg-neutral-900 duration-500 ease-in-out"
+        className="bg-neutral-100 dark:bg-neutral-900 duration-500 ease-in-out"
         ref={editorPanelRef}
       >
         <div className="max-h-screen overflow-y-scroll">
@@ -453,7 +505,7 @@ function App() {
           <Editor
             language="typescript"
             value={typeORMCode}
-            theme="vs-dark"
+            theme={colorTheme === "dark" ? "vs-dark" : "vs-light"}
             onMount={handleEditorDidMount}
             className="flex-1"
             onChange={handleCodeChanges}
