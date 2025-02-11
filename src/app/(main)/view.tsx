@@ -15,6 +15,7 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
+  Connection,
   Controls,
   Edge,
   Node,
@@ -154,7 +155,7 @@ function App() {
           entities.forEach((entity, index) => {
             const result = wasm.convert_from_typeorm(entity);
             const node = JSON.parse(result) as Node<TableProps>;
-            node.id = nodes[index]?.id || nanoid();
+            node.id = node.id || nanoid();
             node.position = nodes[index]?.position || { x: 10, y: 10 };
             node.type = "table";
             node.data.columns = node.data.columns.map((column, index) => {
@@ -168,6 +169,8 @@ function App() {
             node.data.onDelete = removeNode;
             editedNodes.push(node);
           });
+
+          const connections: Connection[] = [];
 
           let i = 0;
           // loop through all nodes to append.
@@ -187,12 +190,19 @@ function App() {
                     );
 
                     if (targetColumn) {
-                      console.log("pushing a source from node:", node);
+                      const connection: Connection = {
+                        source: node.data.id,
+                        target: targetTable.data.id,
+                        sourceHandle: `${node.data.id}-source-${j}`,
+                        targetHandle: `${targetTable.data.id}-target-${targetTable.data.joins.length}`,
+                      };
+                      const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
 
+                      connections.push(connection);
                       // both the table and columns are found
                       // append the source joins and edit the current join with the actual ids.
                       editedNodes[targetTableIdx].data.joins.push({
-                        id: "", // TODO: work on a proper xy-edge__ renderable id.
+                        id: joinId,
                         target: null,
                         onDelete: join.onDelete,
                         onUpdate: join.onUpdate,
@@ -202,6 +212,7 @@ function App() {
                         type: join.type,
                       });
 
+                      editedNodes[i].data.joins[j].id = joinId;
                       editedNodes[i].data.joins[j].target!.table =
                         targetTable.id;
                       editedNodes[i].data.joins[j].target!.column =
@@ -223,7 +234,6 @@ function App() {
               return isReplacable;
             });
 
-            console.log(editedNodes);
             return [
               ...newNodes,
               ...applyNodeChanges(
@@ -236,6 +246,15 @@ function App() {
               ),
             ];
           });
+
+          setTimeout(() => {
+            setEdges((eds) => {
+              for (const connection of connections) {
+                eds = addEdge(connection, eds);
+              }
+              return eds;
+            });
+          }, 200);
         } catch (e) {
           console.log("⚠️ wasm error:", e);
         }
@@ -501,7 +520,7 @@ function App() {
         onMouseDown={() => (compileNodes.current = false)}
       >
         <div className="flex flex-col h-full">
-          <div>[TODO] Language: Typescript, Syntax: TypeORM</div>
+          {/* <div>[TODO] Language: Typescript, Syntax: TypeORM</div> */}
           <Editor
             language="typescript"
             value={typeORMCode}
