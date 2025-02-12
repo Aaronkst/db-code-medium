@@ -226,26 +226,7 @@ function App() {
             i++;
           }
 
-          setNodes((nds) => {
-            const newNodes: Node<TableProps>[] = [];
-            editedNodes.filter((node) => {
-              const isReplacable = !!nds.find((n) => n.id === node.id);
-              if (!isReplacable) newNodes.push(node);
-              return isReplacable;
-            });
-
-            return [
-              ...newNodes,
-              ...applyNodeChanges(
-                editedNodes.map((node) => ({
-                  id: node.id,
-                  type: "replace",
-                  item: node,
-                })),
-                nds,
-              ),
-            ];
-          });
+          setNodes(editedNodes);
 
           setTimeout(() => {
             setEdges((eds) => {

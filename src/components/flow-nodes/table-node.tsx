@@ -91,7 +91,7 @@ export function TableNode({
   }, []);
 
   return (
-    <div className="relative shadow-md rounded-md bg-neutral-300 dark:bg-neutral-900 dark:text-white group/table">
+    <div className="relative shadow-md rounded-md bg-neutral-100 dark:bg-neutral-900 border border-neutral-400 dark:text-white group/table">
       <IconButton
         icon={<Trash size="0.9rem" color="white" />}
         className="group-hover/table:block hidden absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-full"
