@@ -6,15 +6,14 @@ import {
   deselectEdges,
   updateNodes,
 } from "@/lib/flow-editors/nodes";
-import { getDefaultColumn } from "@/utils/constants";
+import { getDefaultColumn } from "@/lib/flow-editors/helpers";
 import type {
   ColumnProps,
   JoinProps,
   TableProps,
-} from "@/utils/types/database-types";
+} from "@/lib/types/database-types";
 import type { Node } from "@xyflow/react";
 import { cloneDeep } from "lodash";
-import { nanoid } from "nanoid";
 import {
   type FormEvent,
   useCallback,
@@ -80,7 +79,7 @@ export function JoinEditor() {
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
-      const newColumn = getDefaultColumn(nanoid(), currentNode.data.id, {
+      const newColumn = getDefaultColumn(currentNode.data, {
         name: (targetTable.data.name || targetTable.data.id) + "Id",
         dbName: (targetTable.data.name || targetTable.data.id) + "_id",
         dataType: targetCol.dataType,

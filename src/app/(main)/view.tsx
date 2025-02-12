@@ -3,12 +3,13 @@
 import { ColumnEditor, JoinEditor } from "@/components/editors";
 import { TableNode } from "@/components/flow-nodes/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
+import { TYPEORM_IMPORTS } from "@/lib/constants";
 import { AppContext } from "@/lib/context/app-context";
 import { EditorContext } from "@/lib/context/editor-context";
+import { getDefaultTable } from "@/lib/flow-editors/helpers";
 import { deleteNodes, updateNodes } from "@/lib/flow-editors/nodes";
-import { getDefaultTable, TYPEORM_IMPORTS } from "@/utils/constants";
-import { extractTypeORMEntities } from "@/utils/helpers";
-import type { JoinProps, TableProps } from "@/utils/types/database-types";
+import type { JoinProps, TableProps } from "@/lib/types/database-types";
+import { extractTypeORMEntities } from "@/lib/utils";
 import { Editor, Monaco } from "@monaco-editor/react";
 import {
   addEdge,
@@ -28,7 +29,6 @@ import {
 import "@xyflow/react/dist/style.css";
 import { cloneDeep, debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
-import { nanoid } from "nanoid";
 import {
   useCallback,
   useContext,
@@ -100,15 +100,23 @@ function App() {
               if (!node.data.joins.length) return node;
               const columns = node.data.columns.map((col) => {
                 if (!col.foreignKey?.target) return col;
+                console.log(
+                  "going to table with:",
+                  col.foreignKey?.target?.table,
+                );
                 const targetTable = nodes.find(
-                  (targetNode) =>
-                    targetNode.id === col.foreignKey?.target?.table,
+                  (target) => target.id === col.foreignKey?.target?.table,
                 );
+                console.log("found target table:", targetTable);
                 if (!targetTable) return col;
-                const targetColumn = targetTable.data.columns.find(
-                  (targetCol) =>
-                    targetCol.id === col.foreignKey?.target?.column,
+                console.log(
+                  "going to column with:",
+                  col.foreignKey?.target?.column,
                 );
+                const targetColumn = targetTable.data.columns.find(
+                  (target) => target.id === col.foreignKey?.target?.column,
+                );
+                console.log("found target column:", targetColumn);
                 if (!targetColumn) return col;
                 return {
                   ...col,
@@ -143,99 +151,107 @@ function App() {
   const debouncedCompileFromTypeORM = useMemo(
     () =>
       debounce((wasm: typeof import("@/wasm/src_rs"), code: string) => {
+        console.log("⚒️ converting from code...");
+
         try {
-          console.log("⚒️ converting from code...");
-
-          const entities = extractTypeORMEntities(code);
-
-          console.log("entities:", entities);
-
-          const editedNodes: Node<TableProps>[] = [];
-
-          entities.forEach((entity, index) => {
-            const result = wasm.convert_from_typeorm(entity);
-            const node = JSON.parse(result) as Node<TableProps>;
-            node.id = node.id || nanoid();
-            node.position = nodes[index]?.position || { x: 10, y: 10 };
-            node.type = "table";
-            node.data.columns = node.data.columns.map((column, index) => {
-              column.id = nodes[index]?.data.columns[index]?.id || nanoid();
-              column.table = node.id;
-              return column;
-            });
-            // @ts-expect-error: TODO: Better types.
-            node.data.onChange = editNode;
-            // @ts-expect-error: TODO: Better types.
-            node.data.onDelete = removeNode;
-            editedNodes.push(node);
-          });
-
-          const connections: Connection[] = [];
-
-          let i = 0;
-          // loop through all nodes to append.
-          for (const node of [...editedNodes]) {
-            if (node.data.joins.length) {
-              // process all the joins
-              let j = 0;
-              for (const { target, ...join } of node.data.joins) {
-                if (target) {
-                  const targetTableIdx = editedNodes.findIndex(
-                    (n) => n.data.name === target.table,
-                  );
-                  if (targetTableIdx > -1) {
-                    const targetTable = editedNodes[targetTableIdx];
-                    const targetColumn = targetTable.data.columns.find(
-                      (col) => col.name === target.column,
-                    );
-
-                    if (targetColumn) {
-                      const connection: Connection = {
-                        source: node.data.id,
-                        target: targetTable.data.id,
-                        sourceHandle: `${node.data.id}-source-${j}`,
-                        targetHandle: `${targetTable.data.id}-target-${targetTable.data.joins.length}`,
-                      };
-                      const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
-
-                      connections.push(connection);
-                      // both the table and columns are found
-                      // append the source joins and edit the current join with the actual ids.
-                      editedNodes[targetTableIdx].data.joins.push({
-                        id: joinId,
-                        target: null,
-                        onDelete: join.onDelete,
-                        onUpdate: join.onUpdate,
-                        through: join.through,
-                        source: node.data.id,
-                        inverseColumn: null,
-                        type: join.type,
-                      });
-
-                      editedNodes[i].data.joins[j].id = joinId;
-                      editedNodes[i].data.joins[j].target!.table =
-                        targetTable.id;
-                      editedNodes[i].data.joins[j].target!.column =
-                        targetColumn.id;
-                    }
-                  }
-                }
-                j++;
-              }
-            }
-            i++;
-          }
-
-          setNodes(editedNodes);
-
-          setTimeout(() => {
-            setEdges((eds) => {
-              for (const connection of connections) {
-                eds = addEdge(connection, eds);
-              }
-              return eds;
-            });
-          }, 200);
+          // TODO: code validation
+          // const entities = extractTypeORMEntities(code);
+          // console.log("entities:", entities);
+          // let editedNodes: Node<TableProps>[] = [];
+          // entities.forEach((entity, index) => {
+          //   const result = wasm.convert_from_typeorm(entity);
+          //   const node = JSON.parse(result) as Node<TableProps>;
+          //   node.id = index.toString();
+          //   node.position = nodes[index]?.position || { x: 10, y: 10 };
+          //   node.type = "table";
+          //   node.data.id = index.toString();
+          //   node.data.columns = node.data.columns.map((column, index) => {
+          //     column.id = index.toString();
+          //     column.table = node.id;
+          //     return column;
+          //   });
+          //   // @ts-expect-error: TODO: Better types.
+          //   node.data.onChange = editNode;
+          //   // @ts-expect-error: TODO: Better types.
+          //   node.data.onDelete = removeNode;
+          //   editedNodes.push(node);
+          // });
+          // editedNodes.map((node, idx) => {
+          //   if (nodes[idx]) {
+          //     node.id = nodes[idx].id;
+          //     node.data.id = nodes[idx].id;
+          //   }
+          //   return node;
+          // });
+          // const connections: Connection[] = [];
+          // let i = 0;
+          // // loop through all nodes to append.
+          // for (const node of [...editedNodes]) {
+          //   if (node.data.joins.length) {
+          //     const foreignKeyIndexes = node.data.columns
+          //       .filter((col) => !!col.foreignKey)
+          //       .map((col) => parseInt(col.id));
+          //     // process all the joins
+          //     let j = 0;
+          //     for (const { target, ...join } of node.data.joins) {
+          //       if (target) {
+          //         const targetTableIdx = editedNodes.findIndex(
+          //           (n) => n.data.name === target.table,
+          //         );
+          //         if (targetTableIdx > -1) {
+          //           const targetTable = editedNodes[targetTableIdx];
+          //           const targetColumnIdx = targetTable.data.columns.findIndex(
+          //             (col) => col.name === target.column,
+          //           );
+          //           if (targetColumnIdx > -1) {
+          //             const connection: Connection = {
+          //               source: node.data.id,
+          //               target: targetTable.data.id,
+          //               sourceHandle: `_source_${j}`,
+          //               targetHandle: `_target_${targetTable.data.joins.length}`,
+          //             };
+          //             const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
+          //             connections.push(connection);
+          //             // both the table and columns are found
+          //             // append the source joins and edit the current join with the actual ids.
+          //             editedNodes[targetTableIdx].data.joins.push({
+          //               id: joinId,
+          //               target: null,
+          //               onDelete: join.onDelete,
+          //               onUpdate: join.onUpdate,
+          //               through: join.through,
+          //               source: node.data.id,
+          //               inverseColumn: null,
+          //               type: join.type,
+          //             });
+          //             const newJoin: JoinProps = {
+          //               ...join,
+          //               id: joinId,
+          //               target: {
+          //                 table: targetTableIdx.toString(),
+          //                 column: targetColumnIdx.toString(),
+          //               },
+          //             };
+          //             editedNodes[i].data.joins[j] = newJoin;
+          //             editedNodes[i].data.columns[
+          //               foreignKeyIndexes[j]
+          //             ].foreignKey = newJoin;
+          //           }
+          //         }
+          //       }
+          //       j++;
+          //     }
+          //   }
+          //   i++;
+          // }
+          // console.log(editedNodes);
+          // setNodes(editedNodes);
+          // setEdges((eds) => {
+          //   for (const connection of connections) {
+          //     eds = addEdge(connection, eds);
+          //   }
+          //   return eds;
+          // });
         } catch (e) {
           console.log("⚠️ wasm error:", e);
         }
@@ -279,14 +295,13 @@ function App() {
     setNodes((nds) => updateNodes({ ...data, id }, nds));
   };
   const appendNode = () => {
-    const id = nanoid();
     setNodes((nds) => [
       ...nds,
       {
-        id,
+        id: nds.length.toString(),
         position: { x: 10, y: 10 },
         type: "table",
-        data: getDefaultTable(id, editNode, removeNode),
+        data: getDefaultTable(nds.length, editNode, removeNode),
       },
     ]);
   };
@@ -350,8 +365,6 @@ function App() {
       const sourceNode = nds.find((node) => node.id === connection.source);
       const targetNode = nds.find((node) => node.id === connection.target);
       if (!sourceNode || !targetNode) return nds;
-
-      // TODO: find if these tables already join each other and if so, reuse the same edge id.
 
       applyEdgeEffects = true;
 

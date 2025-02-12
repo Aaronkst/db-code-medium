@@ -54,9 +54,9 @@ export type JoinProps = {
   // target: where to get the foreign key from.
   target: {
     table: string; // table id
-    tableName?: string; // parse on runtime
+    tableName?: string;
     column: string; // column id, left join on. etc...
-    columnName?: string; // parse on runtime
+    columnName?: string;
   } | null;
   onDelete: "CASCADE" | "SET NULL" | "RESTRICT";
   onUpdate: "CASCADE" | "SET NULL" | "RESTRICT";

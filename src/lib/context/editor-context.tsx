@@ -1,11 +1,11 @@
 "use client";
 
-import { findDuplicateTableNames } from "@/utils/helpers";
+import { findDuplicateTableNames } from "@/lib/utils";
 import type {
   ColumnProps,
   JoinProps,
   TableProps,
-} from "@/utils/types/database-types";
+} from "@/lib/types/database-types";
 import type { Edge, Node } from "@xyflow/react";
 import {
   createContext,

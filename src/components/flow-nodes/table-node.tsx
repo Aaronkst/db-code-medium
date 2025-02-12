@@ -1,8 +1,8 @@
 "use client";
 
 import { EditorContext } from "@/lib/context/editor-context";
-import { getDefaultColumn } from "@/utils/constants";
-import type { ColumnProps, TableProps } from "@/utils/types/database-types";
+import { getDefaultColumn } from "@/lib/flow-editors/helpers";
+import type { ColumnProps, TableProps } from "@/lib/types/database-types";
 import { Handle, Node, NodeProps, Position } from "@xyflow/react";
 import {
   ALargeSmall,
@@ -169,7 +169,7 @@ export function TableNode({
               icon={<Plus size="0.9rem" />}
               onClick={() =>
                 data.onChange(id, {
-                  columns: [...data.columns, getDefaultColumn(nanoid(), id)],
+                  columns: [...data.columns, getDefaultColumn(data)],
                 })
               }
             />
@@ -178,10 +178,10 @@ export function TableNode({
       </div>
       {joinTargets.map((join, idx) => (
         <Handle
-          key={id + "-source-" + idx}
+          key={"_source_-" + idx}
           type="source" // target other sources from this node
           position={Position.Right}
-          id={id + "-source-" + idx}
+          id={"_source_" + idx}
           style={{ top: 20 + (idx + 2) * 10 }}
           isConnectable={false}
         />
@@ -189,17 +189,17 @@ export function TableNode({
       <Handle
         type="source"
         position={Position.Right}
-        id={id + "-source-" + joinTargets.length}
+        id={"_source_" + joinTargets.length}
         style={{ top: 30 }}
         isConnectable
       />
 
       {joinSources.map((join, idx) => (
         <Handle
-          key={id + "-target-" + idx}
+          key={"_target_" + idx}
           type="target" // other source will target this node
           position={Position.Left}
-          id={id + "-target-" + idx}
+          id={"_target_" + idx}
           style={{ top: 20 + (idx + 2) * 10 }}
           isConnectable={false}
         />
@@ -207,7 +207,7 @@ export function TableNode({
       <Handle
         type="target"
         position={Position.Left}
-        id={id + "-target-" + joinSources.length}
+        id={"_target_" + joinSources.length}
         style={{ top: 30 }}
         isConnectable
       />

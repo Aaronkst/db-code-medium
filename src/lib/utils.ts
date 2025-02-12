@@ -1,5 +1,6 @@
 import type { Node } from "@xyflow/react";
 import type { TableProps } from "./types/database-types";
+import ts, { CompilerHost } from "typescript";
 
 /**
  * Helper function to combine all class names.

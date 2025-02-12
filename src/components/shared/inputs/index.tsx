@@ -1,4 +1,4 @@
-import { classNames } from "@/utils/helpers";
+import { classNames } from "@/lib/utils";
 import type {
   InputHTMLAttributes,
   ReactNode,

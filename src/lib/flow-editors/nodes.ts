@@ -1,4 +1,4 @@
-import type { TableProps } from "@/utils/types/database-types";
+import type { TableProps } from "@/lib/types/database-types";
 import {
   applyNodeChanges,
   type NodeChange,

@@ -1,5 +1,5 @@
 import { EditorContext } from "@/lib/context/editor-context";
-import type { ColumnProps } from "@/utils/types/database-types";
+import type { ColumnProps } from "@/lib/types/database-types";
 import { X } from "lucide-react";
 import { useContext, useMemo } from "react";
 import { Button } from "../shared/buttons/button";
