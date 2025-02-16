@@ -302,6 +302,7 @@ export function JoinEditor() {
             className="dark:bg-neutral-600 p-2"
           >
             <option value="one-to-one">One to one</option>
+            <option value="many-to-one">Many to one</option>
             <option value="one-to-many">One to many</option>
             <option value="many-to-many">Many to many</option>
           </select>
