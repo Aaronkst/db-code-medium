@@ -32,7 +32,7 @@ export const getDefaultColumn = (
   zerofill: false,
   enum: null,
   enumName: null,
-  hstoreType: "string",
+  hstoreType: null,
   array: false,
   ...columnProps,
 });

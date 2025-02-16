@@ -23,11 +23,17 @@ export function Input({
   ...props
 }: InputProps) {
   return (
-    <div className={type === "checkbox" ? "flex flex-row-reverse gap-2" : ""}>
+    <div
+      className={
+        type === "checkbox" ? "flex flex-row-reverse gap-2" : "flex flex-col"
+      }
+    >
       {label && (
         <label
           className={
-            props.disabled ? "text-neutral-400 dark:text-neutral-700" : ""
+            props.disabled
+              ? "flex-1 text-neutral-400 dark:text-neutral-700"
+              : "flex-1"
           }
           htmlFor={id}
         >
@@ -74,11 +80,13 @@ export function Select({
   ...props
 }: SelectProps) {
   return (
-    <div>
+    <div className="flex flex-col">
       {label && (
         <label
           className={
-            props.disabled ? "text-neutral-400 dark:text-neutral-700" : ""
+            props.disabled
+              ? "flex-1 text-neutral-400 dark:text-neutral-700"
+              : "flex-1"
           }
           htmlFor={id}
         >

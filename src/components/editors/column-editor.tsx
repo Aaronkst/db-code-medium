@@ -103,6 +103,7 @@ export function ColumnEditor() {
         id="column-primary-key"
         type="checkbox"
         checked={!!editingColumn.primaryKey}
+        disabled={!!editingColumn.foreignKey}
         onChange={() =>
           setEditingColumn({
             ...editingColumn,

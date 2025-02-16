@@ -79,9 +79,12 @@ export function JoinEditor() {
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
+      // TODO: replace column if existing.
+
       const newColumn = getDefaultColumn(currentNode.data, {
-        name: (targetTable.data.name || targetTable.data.id) + "Id",
-        dbName: (targetTable.data.name || targetTable.data.id) + "_id",
+        name: targetTable.data.name?.toLowerCase() || targetTable.data.id,
+        dbName:
+          (targetTable.data.name?.toLowerCase() || targetTable.data.id) + "_id",
         dataType: targetCol.dataType,
         length: targetCol.length,
         precision: targetCol.precision,

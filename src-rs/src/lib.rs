@@ -58,7 +58,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             "float" => "number",
             "uuid" => "string",
             "objectId" => "string",
-            _ => "unknown",
+            _ => data_type,
         };
 
         let mut column_decorator = String::new();
@@ -84,11 +84,11 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             if join_type != "many-to-many" {
                 // Join column options
                 column_decorator.push_str(&format!(
-                    "@{}(() => {}, ({}) => {}.{} {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    "@{}(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
                     join_type,
                     target_table,
-                    target_table,
-                    target_table,
+                    target_table.to_lowercase(),
+                    target_table.to_lowercase(),
                     target_column,
                     on_delete,
                     on_update
@@ -102,10 +102,10 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             } else {
                 // Join table options
                 column_decorator.push_str(&format!(
-                    "@ManyToMany(() => {}, ({}) => {}.{} {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                    "@ManyToMany(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
                     target_table,
-                    target_table,
-                    target_table,
+                    target_table.to_lowercase(),
+                    target_table.to_lowercase(),
                     target_column,
                     on_delete,
                     on_update
@@ -117,6 +117,11 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                     target_column
                 ));
             }
+            // Generate the column definition
+            entity_code.push_str(&format!(
+                "    {}\n    {}: {};\n\n",
+                column_decorator, column_name, target_table
+            ));
         } else if is_primary {
             // Handle primary key or auto increment
             column_decorator = if data_type == "uuid" {
@@ -124,8 +129,19 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             } else {
                 "@PrimaryGeneratedColumn()".to_string()
             };
+            // Generate the column definition
+            entity_code.push_str(&format!(
+                "    {}\n    {}: {};\n\n",
+                column_decorator, column_name, ts_data_type
+            ));
         } else if is_auto_increment {
             column_decorator = "@PrimaryGeneratedColumn(\"increment\")".to_string();
+
+            // Generate the column definition
+            entity_code.push_str(&format!(
+                "    {}\n    {}: {};\n\n",
+                column_decorator, column_name, ts_data_type
+            ));
         } else {
             // Add @Index() if applicable
             if is_index {
@@ -176,18 +192,17 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             if !hstore_type.is_empty() {
                 column_decorator.push_str(&format!(", hstoreType: \"{}\"", hstore_type));
             }
-            if !is_array {
+            if is_array {
                 column_decorator.push_str(", array: true");
             }
 
             column_decorator.push_str(" })");
+            // Generate the column definition
+            entity_code.push_str(&format!(
+                "    {}\n    {}: {};\n\n",
+                column_decorator, column_name, ts_data_type
+            ));
         }
-
-        // Generate the column definition
-        entity_code.push_str(&format!(
-            "    {}\n    {}: {};\n\n",
-            column_decorator, column_name, ts_data_type
-        ));
     }
 
     // Close the entity definition
