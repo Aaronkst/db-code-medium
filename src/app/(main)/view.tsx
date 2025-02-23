@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnEditor, JoinEditor } from "@/components/editors";
+import { CodeEditor } from "@/components/editors/code-editor";
 import { TableNode } from "@/components/flow-nodes/table-node";
 import { IconButton } from "@/components/shared/buttons/icon-button";
 import { TYPEORM_IMPORTS } from "@/lib/constants";
@@ -9,8 +10,9 @@ import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultTable } from "@/lib/flow-editors/helpers";
 import { deleteNodes, updateNodes } from "@/lib/flow-editors/nodes";
 import type { JoinProps, TableProps } from "@/lib/types/database-types";
-import { extractTypeORMEntities } from "@/lib/utils";
+import { extractTypeORMEntities, extractTypeORMEntitiesV2 } from "@/lib/utils";
 import { Editor, Monaco } from "@monaco-editor/react";
+import { parse } from "@typescript-eslint/parser";
 import {
   addEdge,
   applyEdgeChanges,
@@ -18,17 +20,18 @@ import {
   Background,
   Connection,
   Controls,
-  Edge,
-  Node,
-  OnConnect,
-  OnEdgesChange,
-  OnNodesChange,
+  type Edge,
+  type Node,
+  type OnConnect,
+  type OnEdgesChange,
+  type OnNodesChange,
   ReactFlow,
   ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cloneDeep, debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
+import { check, format } from "prettier";
 import {
   useCallback,
   useContext,
@@ -69,9 +72,6 @@ function App() {
   const editorPanelRef = useRef<ImperativePanelHandle>(null);
   const nodePanelRef = useRef<ImperativePanelHandle>(null);
   const codePanelRef = useRef<ImperativePanelHandle>(null);
-
-  // TODO: better monaco editor type
-  const editorRef = useRef<any>(null);
 
   // control when to compile codes
   const compileNodes = useRef<boolean>(true);
@@ -148,117 +148,6 @@ function App() {
     [],
   );
 
-  const debouncedCompileFromTypeORM = useMemo(
-    () =>
-      debounce((wasm: typeof import("@/wasm/src_rs"), code: string) => {
-        console.log("⚒️ converting from code...");
-
-        try {
-          // TODO: code validation
-          // const entities = extractTypeORMEntities(code);
-          // console.log("entities:", entities);
-          // let editedNodes: Node<TableProps>[] = [];
-          // entities.forEach((entity, index) => {
-          //   const result = wasm.convert_from_typeorm(entity);
-          //   const node = JSON.parse(result) as Node<TableProps>;
-          //   node.id = index.toString();
-          //   node.position = nodes[index]?.position || { x: 10, y: 10 };
-          //   node.type = "table";
-          //   node.data.id = index.toString();
-          //   node.data.columns = node.data.columns.map((column, index) => {
-          //     column.id = index.toString();
-          //     column.table = node.id;
-          //     return column;
-          //   });
-          //   // @ts-expect-error: TODO: Better types.
-          //   node.data.onChange = editNode;
-          //   // @ts-expect-error: TODO: Better types.
-          //   node.data.onDelete = removeNode;
-          //   editedNodes.push(node);
-          // });
-          // editedNodes.map((node, idx) => {
-          //   if (nodes[idx]) {
-          //     node.id = nodes[idx].id;
-          //     node.data.id = nodes[idx].id;
-          //   }
-          //   return node;
-          // });
-          // const connections: Connection[] = [];
-          // let i = 0;
-          // // loop through all nodes to append.
-          // for (const node of [...editedNodes]) {
-          //   if (node.data.joins.length) {
-          //     const foreignKeyIndexes = node.data.columns
-          //       .filter((col) => !!col.foreignKey)
-          //       .map((col) => parseInt(col.id));
-          //     // process all the joins
-          //     let j = 0;
-          //     for (const { target, ...join } of node.data.joins) {
-          //       if (target) {
-          //         const targetTableIdx = editedNodes.findIndex(
-          //           (n) => n.data.name === target.table,
-          //         );
-          //         if (targetTableIdx > -1) {
-          //           const targetTable = editedNodes[targetTableIdx];
-          //           const targetColumnIdx = targetTable.data.columns.findIndex(
-          //             (col) => col.name === target.column,
-          //           );
-          //           if (targetColumnIdx > -1) {
-          //             const connection: Connection = {
-          //               source: node.data.id,
-          //               target: targetTable.data.id,
-          //               sourceHandle: `_source_${j}`,
-          //               targetHandle: `_target_${targetTable.data.joins.length}`,
-          //             };
-          //             const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
-          //             connections.push(connection);
-          //             // both the table and columns are found
-          //             // append the source joins and edit the current join with the actual ids.
-          //             editedNodes[targetTableIdx].data.joins.push({
-          //               id: joinId,
-          //               target: null,
-          //               onDelete: join.onDelete,
-          //               onUpdate: join.onUpdate,
-          //               through: join.through,
-          //               source: node.data.id,
-          //               inverseColumn: null,
-          //               type: join.type,
-          //             });
-          //             const newJoin: JoinProps = {
-          //               ...join,
-          //               id: joinId,
-          //               target: {
-          //                 table: targetTableIdx.toString(),
-          //                 column: targetColumnIdx.toString(),
-          //               },
-          //             };
-          //             editedNodes[i].data.joins[j] = newJoin;
-          //             editedNodes[i].data.columns[
-          //               foreignKeyIndexes[j]
-          //             ].foreignKey = newJoin;
-          //           }
-          //         }
-          //       }
-          //       j++;
-          //     }
-          //   }
-          //   i++;
-          // }
-          // console.log(editedNodes);
-          // setNodes(editedNodes);
-          // setEdges((eds) => {
-          //   for (const connection of connections) {
-          //     eds = addEdge(connection, eds);
-          //   }
-          //   return eds;
-          // });
-        } catch (e) {
-          console.log("⚠️ wasm error:", e);
-        }
-      }, 500),
-    [nodes],
-  );
-
   useEffect(() => {
     const loadWasm = async () => {
       try {
@@ -273,8 +162,8 @@ function App() {
         console.log("⚠️ wasm error:", e);
       }
     };
-    loadWasm();
-  }, []);
+    if (!wasmModule) loadWasm();
+  }, [wasmModule]);
 
   useEffect(() => {
     if (!wasmModule || !compileNodes.current) return;
@@ -435,38 +324,117 @@ function App() {
     });
   }, []);
 
-  // monaco options.
-  const handleEditorDidMount = async (editor: unknown, monaco: Monaco) => {
-    try {
-      editorRef.current = editor;
-      const response = await fetch(
-        "https://raw.githubusercontent.com/typeorm/typeorm/master/index.d.ts",
-      );
-      const typeORMDefs = await response.text();
-      // Configure TypeScript settings
-      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-        target: monaco.languages.typescript.ScriptTarget.ES2020,
-        module: monaco.languages.typescript.ModuleKind.CommonJS,
-        allowJs: true,
-        strict: true,
-        noEmit: true,
-        typeRoots: ["node_modules/@types"],
-      });
+  // Legacy code for reference.
+  // const debouncedCompileFromTypeORM = useMemo(
+  //     () =>
+  //       debounce((wasm: typeof import("@/wasm/src_rs"), code: string) => {
+  //         console.log("⚒️ converting from code...");
 
-      // Add TypeORM type definitions to Monaco Editor
-      monaco.languages.typescript.typescriptDefaults.addExtraLib(
-        typeORMDefs,
-        "file:///node_modules/typeorm/index.d.ts", // Path for the definitions
-      );
-    } catch (err) {
-      console.log("monaco err:", err);
-    }
-  };
-
-  const handleCodeChanges = (code: string | undefined) => {
-    if (!code || !wasmModule) return;
-    debouncedCompileFromTypeORM(wasmModule, code);
-  };
+  //         try {
+  //           // TODO: code validation
+  //           // const entities = extractTypeORMEntities(code);
+  //           // console.log("entities:", entities);
+  //           // let editedNodes: Node<TableProps>[] = [];
+  //           // entities.forEach((entity, index) => {
+  //           //   const result = wasm.convert_from_typeorm(entity);
+  //           //   const node = JSON.parse(result) as Node<TableProps>;
+  //           //   node.id = index.toString();
+  //           //   node.position = nodes[index]?.position || { x: 10, y: 10 };
+  //           //   node.type = "table";
+  //           //   node.data.id = index.toString();
+  //           //   node.data.columns = node.data.columns.map((column, index) => {
+  //           //     column.id = index.toString();
+  //           //     column.table = node.id;
+  //           //     return column;
+  //           //   });
+  //           //   // @ts-expect-error: TODO: Better types.
+  //           //   node.data.onChange = editNode;
+  //           //   // @ts-expect-error: TODO: Better types.
+  //           //   node.data.onDelete = removeNode;
+  //           //   editedNodes.push(node);
+  //           // });
+  //           // editedNodes.map((node, idx) => {
+  //           //   if (nodes[idx]) {
+  //           //     node.id = nodes[idx].id;
+  //           //     node.data.id = nodes[idx].id;
+  //           //   }
+  //           //   return node;
+  //           // });
+  //           // const connections: Connection[] = [];
+  //           // let i = 0;
+  //           // // loop through all nodes to append.
+  //           // for (const node of [...editedNodes]) {
+  //           //   if (node.data.joins.length) {
+  //           //     const foreignKeyIndexes = node.data.columns
+  //           //       .filter((col) => !!col.foreignKey)
+  //           //       .map((col) => parseInt(col.id));
+  //           //     // process all the joins
+  //           //     let j = 0;
+  //           //     for (const { target, ...join } of node.data.joins) {
+  //           //       if (target) {
+  //           //         const targetTableIdx = editedNodes.findIndex(
+  //           //           (n) => n.data.name === target.table,
+  //           //         );
+  //           //         if (targetTableIdx > -1) {
+  //           //           const targetTable = editedNodes[targetTableIdx];
+  //           //           const targetColumnIdx = targetTable.data.columns.findIndex(
+  //           //             (col) => col.name === target.column,
+  //           //           );
+  //           //           if (targetColumnIdx > -1) {
+  //           //             const connection: Connection = {
+  //           //               source: node.data.id,
+  //           //               target: targetTable.data.id,
+  //           //               sourceHandle: `_source_${j}`,
+  //           //               targetHandle: `_target_${targetTable.data.joins.length}`,
+  //           //             };
+  //           //             const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
+  //           //             connections.push(connection);
+  //           //             // both the table and columns are found
+  //           //             // append the source joins and edit the current join with the actual ids.
+  //           //             editedNodes[targetTableIdx].data.joins.push({
+  //           //               id: joinId,
+  //           //               target: null,
+  //           //               onDelete: join.onDelete,
+  //           //               onUpdate: join.onUpdate,
+  //           //               through: join.through,
+  //           //               source: node.data.id,
+  //           //               inverseColumn: null,
+  //           //               type: join.type,
+  //           //             });
+  //           //             const newJoin: JoinProps = {
+  //           //               ...join,
+  //           //               id: joinId,
+  //           //               target: {
+  //           //                 table: targetTableIdx.toString(),
+  //           //                 column: targetColumnIdx.toString(),
+  //           //               },
+  //           //             };
+  //           //             editedNodes[i].data.joins[j] = newJoin;
+  //           //             editedNodes[i].data.columns[
+  //           //               foreignKeyIndexes[j]
+  //           //             ].foreignKey = newJoin;
+  //           //           }
+  //           //         }
+  //           //       }
+  //           //       j++;
+  //           //     }
+  //           //   }
+  //           //   i++;
+  //           // }
+  //           // console.log(editedNodes);
+  //           // setNodes(editedNodes);
+  //           // setEdges((eds) => {
+  //           //   for (const connection of connections) {
+  //           //     eds = addEdge(connection, eds);
+  //           //   }
+  //           //   return eds;
+  //           // });
+  //         } catch (e) {
+  //           console.log("⚠️ wasm error:", e);
+  //         }
+  //       }, 500),
+  //     [nodes],
+  //   );
 
   return (
     <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
@@ -514,14 +482,14 @@ function App() {
         onMouseDown={() => (compileNodes.current = false)}
       >
         <div className="flex flex-col h-full">
-          {/* <div>[TODO] Language: Typescript, Syntax: TypeORM</div> */}
-          <Editor
-            language="typescript"
-            value={typeORMCode}
-            theme={colorTheme === "dark" ? "vs-dark" : "vs-light"}
-            onMount={handleEditorDidMount}
+          <CodeEditor
+            ormCode={typeORMCode}
             className="flex-1"
-            onChange={handleCodeChanges}
+            wasmModule={wasmModule}
+            nodeManiuplators={{
+              editNode,
+              removeNode,
+            }}
           />
         </div>
       </Panel>

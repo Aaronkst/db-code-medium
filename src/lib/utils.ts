@@ -18,7 +18,7 @@ export function classNames(...classes: string[]) {
  */
 export function extractTypeORMEntities(code: string) {
   let splitCode = code.split("@Entity()");
-  const classRegex = /export\s+class\s+(\w+)/;
+  const classRegex = /(?:export\s+)?class\s+(\w+)/;
   const propertyRegex = /((@\w+\([^\n*]*\)\s*)+)(\w+:\s+\w+;)/g;
 
   splitCode = splitCode
@@ -38,6 +38,24 @@ export function extractTypeORMEntities(code: string) {
     });
 
   return splitCode;
+}
+
+/**
+ * Extract all `@Entity()` class declarations for typeORM syntax
+ * @param code
+ * @returns
+ */
+export function extractTypeORMEntitiesV2(code: string, className: string) {
+  const entity = code.replace("@Entity()", "");
+  const propertyRegex = /((@\w+\([^\n*]*\)\s*)+)(\w+:\s+\w+;)/g;
+
+  const matchedProperties = [...entity.matchAll(propertyRegex)];
+
+  const formattedProperties = matchedProperties.map(
+    (match) => `${match[1].trim().replace(/\n/g, "")} ${match[3]}`,
+  );
+
+  return `@Entity()\nexport class ${className} {\n  ${formattedProperties.join("\n  ")}\n}`;
 }
 
 /**
