@@ -67,117 +67,164 @@ pub fn get_default_column() -> Value {
 }
 
 pub fn foreign_key_options_extractor(arguments: &Vec<Value>, key_type: &str) -> Value {
-    if arguments.len() > 0 {
-        let mut foreign_key = json!({
-            "target": null,
-            "onDelete": "CASCADE",
-            "onUpdate": "CASCADE",
-            "through": null,
-            "source": null,
-            "type": key_type
-        });
-        let mut i = 0;
+    let mut foreign_key = json!({
+        "target": null,
+        "onDelete": "RESTRICT",
+        "onUpdate": "RESTRICT",
+        "through": null,
+        "source": null,
+        "type": key_type
+    });
+    let mut i = 0;
 
-        let mut target_table = String::new();
-        let mut target_column = String::new();
+    let mut target_table = String::new();
+    let mut target_column = String::new();
 
-        for argument in arguments {
-            let mut argument_type = argument["type"].to_string();
-            argument_type = trim_quotes(&argument_type).to_string();
+    let empty_array = Vec::new();
+    for argument in arguments {
+        let mut argument_type = argument["type"].to_string();
+        argument_type = trim_quotes(&argument_type).to_string();
 
-            if i == 0 && argument_type == "ArrowFunctionExpression" {
-                // first argument, always a function that returns the target table.
-                target_table = argument["body"].get("name").unwrap().to_string();
-                target_table = trim_quotes(&target_table).to_string();
-            }
+        if i == 0 && argument_type == "ArrowFunctionExpression" {
+            // first argument, always a function that returns the target table.
+            target_table = argument["body"].get("name").unwrap().to_string();
+            target_table = trim_quotes(&target_table).to_string();
+        }
 
-            if i == 1 && argument_type == "ArrowFunctionExpression" {
-                // second argument, always a function that defines the target column.
-                target_column = argument["body"]["property"]
-                    .get("name")
-                    .unwrap()
-                    .to_string();
-                target_column = trim_quotes(&target_column).to_string();
-            }
+        if i == 1 && argument_type == "ArrowFunctionExpression" {
+            // second argument, always a function that defines the target column.
+            target_column = argument["body"]["property"]
+                .get("name")
+                .unwrap()
+                .to_string();
+            target_column = trim_quotes(&target_column).to_string();
+        }
 
-            if i == 2 && argument_type == "ObjectExpression" {
-                // third argument, always a join options object
-                if let Some(join_options) = argument.get("properties").unwrap().as_array() {
-                    if join_options.len() > 0 {
-                        for option in join_options {
-                            if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
-                                let key = trim_quotes(key_name);
-                                let mut value = option["value"]["value"].to_string();
-                                value = trim_quotes(&value).to_string();
+        if i == 2 && argument_type == "ObjectExpression" {
+            // third argument, always a join options object
+            let join_options = argument["properties"].as_array().unwrap_or(&empty_array);
+            if join_options.len() > 0 {
+                for option in join_options {
+                    if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
+                        let key = trim_quotes(key_name);
+                        let mut value = option["value"]["value"].to_string();
+                        value = trim_quotes(&value).to_string();
 
-                                match key {
-                                    "onDelete" => foreign_key["onDelete"] = json!(value),
-                                    "onUpdate" => foreign_key["onDelete"] = json!(value),
-                                    _ => {}
-                                }
-                            }
+                        match key {
+                            "onDelete" => foreign_key["onDelete"] = json!(value),
+                            "onUpdate" => foreign_key["onDelete"] = json!(value),
+                            _ => {}
                         }
                     }
                 }
             }
-
-            i = i + 1;
         }
 
-        foreign_key["target"] = json!({
-            "table": target_table,
-            "column": target_column
-        });
-
-        return foreign_key;
+        i = i + 1;
     }
 
-    json!(null)
+    foreign_key["target"] = json!({
+        "table": target_table,
+        "column": target_column
+    });
+
+    foreign_key
 }
 
 pub fn basic_column_options_extractor(mut column_object: Value, arguments: &Vec<Value>) -> Value {
-    if arguments.len() > 0 {
-        for argument in arguments {
-            let mut argument_type = argument["type"].to_string();
-            argument_type = trim_quotes(&argument_type).to_string();
-            if argument_type == "ObjectExpression" {
-                if let Some(column_options) = argument.get("properties").unwrap().as_array() {
-                    for option in column_options {
-                        if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
-                            let key = trim_quotes(key_name);
+    let empty_array = Vec::new();
+    for argument in arguments {
+        let argument_type = argument["type"].as_str().unwrap_or("");
+        if argument_type == "ObjectExpression" {
+            let column_options = argument["properties"].as_array().unwrap_or(&empty_array);
+            for option in column_options {
+                if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
+                    let key = trim_quotes(key_name);
 
-                            let mut value = option["value"]["value"].to_string();
-                            value = trim_quotes(&value).to_string();
+                    let mut value = option["value"]["value"].to_string();
+                    value = trim_quotes(&value).to_string();
 
-                            match key {
-                                "name" => column_object["dbName"] = json!(value),
-                                "type" => column_object["dataType"] = json!(value),
-                                "index" => column_object["index"] = json!(value),
-                                "unique" => column_object["unique"] = json!(value),
-                                "nullable" => column_object["nullable"] = json!(value),
-                                "default" => column_object["defaultValue"] = json!(value),
-                                "length" => column_object["length"] = json!(value),
-                                "precision" => column_object["precision"] = json!(value),
-                                "scale" => column_object["scale"] = json!(value),
-                                "collation" => column_object["collation"] = json!(value),
-                                "autoIncrement" => column_object["autoIncrement"] = json!(value),
-                                "select" => column_object["select"] = json!(value),
-                                "zerofill" => column_object["zerofill"] = json!(value),
-                                "enum" => {
-                                    column_object["enum"] = value
-                                        .clone()
-                                        .to_string()
-                                        .split(",")
-                                        .map(|s| Value::String(s.to_string())) // Convert each item to Value::String
-                                        .collect()
-                                }
-                                "enumName" => column_object["enumName"] = json!(value),
-                                "hstoreType" => column_object["hstoreType"] = json!(value),
-                                "unqiue" => column_object["unique"] = json!(value),
-                                "array" => column_object["array"] = json!(value),
-                                _ => {} // do nothing
-                            }
+                    match key {
+                        "name" => column_object["dbName"] = json!(value),
+                        "type" => column_object["dataType"] = json!(value),
+                        "index" => column_object["index"] = json!(value),
+                        "unique" => column_object["unique"] = json!(value),
+                        "nullable" => column_object["nullable"] = json!(value),
+                        "default" => column_object["defaultValue"] = json!(value),
+                        "length" => column_object["length"] = json!(value),
+                        "precision" => column_object["precision"] = json!(value),
+                        "scale" => column_object["scale"] = json!(value),
+                        "collation" => column_object["collation"] = json!(value),
+                        "autoIncrement" => column_object["autoIncrement"] = json!(value),
+                        "select" => column_object["select"] = json!(value),
+                        "zerofill" => column_object["zerofill"] = json!(value),
+                        "enum" => {
+                            column_object["enum"] = value
+                                .clone()
+                                .to_string()
+                                .split(",")
+                                .map(|s| Value::String(s.to_string())) // Convert each item to Value::String
+                                .collect()
                         }
+                        "enumName" => column_object["enumName"] = json!(value),
+                        "hstoreType" => column_object["hstoreType"] = json!(value),
+                        "unqiue" => column_object["unique"] = json!(value),
+                        "array" => column_object["array"] = json!(value),
+                        _ => {} // do nothing
+                    }
+                }
+            }
+        }
+    }
+    column_object
+}
+
+pub fn join_column_options_extractor(mut column_object: Value, arguments: &Vec<Value>) -> Value {
+    let empty_array = Vec::new();
+    for argument in arguments {
+        let argument_type = argument["type"].as_str().unwrap_or("");
+        if argument_type == "ObjectExpression" {
+            let column_options = argument["properties"].as_array().unwrap_or(&empty_array);
+            for option in column_options {
+                if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
+                    let key = trim_quotes(key_name);
+
+                    let mut value = option["value"]["value"].to_string();
+                    value = trim_quotes(&value).to_string();
+
+                    match key {
+                        "name" => column_object["dbName"] = json!(value),
+                        "referencedColumnName" => {
+                            column_object["foreignKey"]["target"]["column"] = json!(value);
+                        }
+                        _ => {} // do nothing
+                    }
+                }
+            }
+        }
+    }
+    column_object
+}
+
+pub fn join_table_options_extractor(mut column_object: Value, arguments: &Vec<Value>) -> Value {
+    let empty_array = Vec::new();
+    for argument in arguments {
+        let argument_type = argument["type"].as_str().unwrap_or("");
+        if argument_type == "ObjectExpression" {
+            let column_options = argument["properties"].as_array().unwrap_or(&empty_array);
+            for option in column_options {
+                if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
+                    let key = trim_quotes(key_name);
+
+                    let mut value = option["value"]["value"].to_string();
+                    value = trim_quotes(&value).to_string();
+
+                    match key {
+                        "name" => column_object["foreignKey"]["through"] = json!(value),
+                        // TODO: research how to handle
+                        "joinColumn" => {}
+                        "inverseJoinColumn" => {}
+                        _ => {} // do nothing
                     }
                 }
             }

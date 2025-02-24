@@ -264,6 +264,7 @@ pub fn convert_from_typeorm_v2(program: &str) -> String {
 
                             if decorator_name == "Index" {
                                 column_object["index"] = json!(true);
+                                continue;
                             }
 
                             if decorator_name == "PrimaryGeneratedColumn" && !is_foreign_key {
@@ -280,7 +281,6 @@ pub fn convert_from_typeorm_v2(program: &str) -> String {
                                 } else {
                                     println!("no arguments for primary key.")
                                 }
-
                                 continue;
                             }
 
@@ -295,23 +295,39 @@ pub fn convert_from_typeorm_v2(program: &str) -> String {
 
                             if join_type.len() > 0 && !is_primary_key {
                                 if arguments.len() > 0 {
-                                    let foreign_key = helpers::foreign_key_options_extractor(
-                                        arguments, join_type,
-                                    );
-
-                                    if foreign_key != json!(null) {
-                                        column_object["foreignKey"] = foreign_key;
-                                    }
+                                    column_object["foreignKey"] =
+                                        helpers::foreign_key_options_extractor(
+                                            arguments, join_type,
+                                        );
                                 } else {
                                     println!("no arguments for foreign key.")
                                 }
                                 continue;
                             }
 
-                            // TODO: join column & join table options
-                            if decorator_name == "JoinColumn" {}
+                            if decorator_name == "JoinColumn" {
+                                if arguments.len() > 0 {
+                                    column_object = helpers::join_column_options_extractor(
+                                        column_object,
+                                        arguments,
+                                    );
+                                } else {
+                                    println!("no arguments for join column.")
+                                }
+                                continue;
+                            }
 
-                            if decorator_name == "JoinTable" {}
+                            if decorator_name == "JoinTable" {
+                                if arguments.len() > 0 {
+                                    column_object = helpers::join_table_options_extractor(
+                                        column_object,
+                                        arguments,
+                                    );
+                                } else {
+                                    println!("no arguments for join table.")
+                                }
+                                continue;
+                            }
 
                             if decorator_name == "Column" && !is_foreign_key && !is_primary_key {
                                 // basic column
