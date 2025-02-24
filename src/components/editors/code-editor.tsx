@@ -47,7 +47,7 @@ const CodeEditor = memo(
 
     const debouncedCompileFromTypeORM = useMemo(
       () =>
-        debounce(async (code: string) => {
+        debounce(async (code: string, nodes: Node<TableProps>[]) => {
           if (!wasmModule) return;
           console.log("⚒️ converting from code...");
 
@@ -87,7 +87,14 @@ const CodeEditor = memo(
 
               let idx = 1;
               for (const node of parsedNodes) {
-                node.position = { x: idx * 10, y: idx * 10 };
+                const matchedNode = nodes.find(
+                  (originalNode) => originalNode.data.name === node.data.name,
+                );
+
+                /* Find and use original position if available. */
+                node.position = matchedNode
+                  ? matchedNode.position
+                  : { x: idx * 10, y: idx * 10 };
                 node.type = "table";
                 // @ts-expect-error: TODO: better node types
                 node.data.onChange = editNode;
@@ -163,12 +170,12 @@ const CodeEditor = memo(
             console.log("⚠️ wasm error:", e);
           }
         }, 500),
-      [nodes, wasmModule, editNode, removeNode],
+      [wasmModule, editNode, removeNode],
     );
 
     const handleCodeChanges = (code: string | undefined) => {
       if (!code) return;
-      debouncedCompileFromTypeORM(code);
+      debouncedCompileFromTypeORM(code, nodes);
     };
 
     return (

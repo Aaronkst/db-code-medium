@@ -1,5 +1,6 @@
 import type { TableDataProps } from "@/components/flow-nodes/table-node";
 import type { ColumnProps, TableProps } from "@/lib/types/database-types";
+import { nanoid } from "nanoid";
 
 /**
  * Helper function to retur a default column object for a table.
@@ -11,7 +12,7 @@ export const getDefaultColumn = (
   table: TableProps,
   columnProps?: Partial<ColumnProps>,
 ): ColumnProps => ({
-  id: table.columns.length.toString(),
+  id: nanoid(),
   table: table.id,
   name: "",
   dbName: "",

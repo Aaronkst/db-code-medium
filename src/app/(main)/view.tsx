@@ -31,6 +31,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { cloneDeep, debounce } from "lodash";
 import { EllipsisVertical, FilePlus } from "lucide-react";
+import { nanoid } from "nanoid";
 import { check, format } from "prettier";
 import {
   useCallback,
@@ -100,23 +101,13 @@ function App() {
               if (!node.data.joins.length) return node;
               const columns = node.data.columns.map((col) => {
                 if (!col.foreignKey?.target) return col;
-                console.log(
-                  "going to table with:",
-                  col.foreignKey?.target?.table,
-                );
                 const targetTable = nodes.find(
                   (target) => target.id === col.foreignKey?.target?.table,
                 );
-                console.log("found target table:", targetTable);
                 if (!targetTable) return col;
-                console.log(
-                  "going to column with:",
-                  col.foreignKey?.target?.column,
-                );
                 const targetColumn = targetTable.data.columns.find(
                   (target) => target.id === col.foreignKey?.target?.column,
                 );
-                console.log("found target column:", targetColumn);
                 if (!targetColumn) return col;
                 return {
                   ...col,
@@ -133,12 +124,17 @@ function App() {
               return { ...node, data: { ...node.data, columns } };
             });
 
-            const _typeORMCode: string[] = parsedNodes.map((node) =>
-              wasm.convert_to_typeorm(JSON.stringify(node)),
+            const _typeORMCode = wasm.convert_to_typeorm(
+              JSON.stringify(parsedNodes),
             );
-            setTypeORMCode(
-              `${TYPEORM_IMPORTS}\n\n${_typeORMCode.join("\n\n")}`,
-            );
+            setTypeORMCode(_typeORMCode);
+
+            // const _typeORMCode: string[] = parsedNodes.map((node) =>
+            //   wasm.convert_to_typeorm(JSON.stringify(node)),
+            // );
+            // setTypeORMCode(
+            //   `${TYPEORM_IMPORTS}\n\n${_typeORMCode.join("\n\n")}`,
+            // );
           } catch (e) {
             console.log("⚠️ wasm error:", e);
           }
@@ -184,15 +180,26 @@ function App() {
     setNodes((nds) => updateNodes({ ...data, id }, nds));
   };
   const appendNode = () => {
-    setNodes((nds) => [
-      ...nds,
-      {
-        id: nds.length.toString(),
-        position: { x: 10, y: 10 },
-        type: "table",
-        data: getDefaultTable(nds.length, editNode, removeNode),
-      },
-    ]);
+    setNodes((nds) => {
+      const nodeId = nanoid();
+      const nodes = [
+        ...nds,
+        {
+          id: nodeId,
+          position: { x: 10, y: 10 },
+          type: "table",
+          data: getDefaultTable(nodeId, editNode, removeNode),
+        },
+      ];
+      return applyNodeChanges(
+        nodes.map((node) => ({
+          type: "select",
+          id: node.id,
+          selected: node.id === nodeId,
+        })),
+        nodes,
+      );
+    });
   };
 
   // apply `colum-editor` updates.
@@ -466,6 +473,7 @@ function App() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
+          colorMode={colorTheme}
         >
           <Background />
           <Controls />
