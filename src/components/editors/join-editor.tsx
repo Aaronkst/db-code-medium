@@ -1,12 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/shared/modals";
 import { EditorContext } from "@/lib/context/editor-context";
+import { getDefaultColumn } from "@/lib/flow-editors/helpers";
 import {
   deleteEdges,
   deselectEdges,
   updateNodes,
 } from "@/lib/flow-editors/nodes";
-import { getDefaultColumn } from "@/lib/flow-editors/helpers";
 import type {
   ColumnProps,
   JoinProps,
@@ -14,6 +13,7 @@ import type {
 } from "@/lib/types/database-types";
 import type { Node } from "@xyflow/react";
 import { cloneDeep } from "lodash";
+import { CheckIcon, TrashIcon } from "lucide-react";
 import {
   type FormEvent,
   useCallback,
@@ -31,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { CheckIcon, TrashIcon } from "lucide-react";
 
 export function JoinEditor() {
   const {
