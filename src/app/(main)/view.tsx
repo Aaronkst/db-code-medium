@@ -2,8 +2,9 @@
 
 import { ColumnEditor, JoinEditor } from "@/components/editors";
 import { CodeEditor } from "@/components/editors/code-editor";
+import { FlowMenu } from "@/components/editors/flow-menu";
 import { TableNode } from "@/components/flow-nodes/table-node";
-import { IconButton } from "@/components/shared/buttons/icon-button";
+import { Button } from "@/components/ui/button";
 import { AppContext } from "@/lib/context/app-context";
 import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultTable } from "@/lib/flow-editors/helpers";
@@ -76,11 +77,11 @@ function App() {
   const showEditingPane = useMemo(() => !!editingColumn, [editingColumn]);
 
   // code compilers
-  useEffect(() => {
-    editorPanelRef.current?.resize(showEditingPane ? 15 : 0);
-    nodePanelRef.current?.resize(showEditingPane ? 45 : 50);
-    codePanelRef.current?.resize(showEditingPane ? 40 : 50);
-  }, [showEditingPane]);
+  // useEffect(() => {
+  //   editorPanelRef.current?.resize(showEditingPane ? 15 : 0);
+  //   nodePanelRef.current?.resize(showEditingPane ? 45 : 50);
+  //   codePanelRef.current?.resize(showEditingPane ? 40 : 50);
+  // }, [showEditingPane]);
 
   const debouncedCompileToTypeORM = useMemo(
     () =>
@@ -175,7 +176,12 @@ function App() {
           id: nodeId,
           position: { x: 10, y: 10 },
           type: "table",
-          data: getDefaultTable(nodeId, editNode, removeNode),
+          data: getDefaultTable(
+            nodeId,
+            `Entity_${nds.length}`,
+            editNode,
+            removeNode,
+          ),
         },
       ];
       return applyNodeChanges(
@@ -319,8 +325,9 @@ function App() {
   }, []);
 
   return (
-    <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
-      <Panel
+    <>
+      <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
+        {/* <Panel
         defaultSize={0}
         className="bg-neutral-100 dark:bg-neutral-900 duration-500 ease-in-out"
         ref={editorPanelRef}
@@ -328,56 +335,57 @@ function App() {
         <div className="max-h-screen overflow-y-scroll">
           <ColumnEditor />
         </div>
-      </Panel>
+      </Panel> */}
 
-      <PanelResizeHandle disabled></PanelResizeHandle>
+        {/* <PanelResizeHandle disabled></PanelResizeHandle> */}
 
-      <Panel
-        defaultSize={50}
-        className="relative"
-        ref={nodePanelRef}
-        onMouseDown={() => (compileNodes.current = true)}
-      >
-        <div className="flex absolute top-8 right-8 rounded-md p-1 z-10 dark:bg-neutral-800">
-          <IconButton icon={<FilePlus size="0.9rem" />} onClick={appendNode} />
-        </div>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          colorMode={colorTheme}
+        <Panel
+          defaultSize={50}
+          className="flex flex-col"
+          ref={nodePanelRef}
+          onMouseDown={() => (compileNodes.current = true)}
         >
-          <Background />
-          <Controls />
-        </ReactFlow>
-      </Panel>
-      <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-800 flex justify-center items-center">
-        <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm">
-          <EllipsisVertical className="h-2.5 w-2.5" />
-        </div>
-      </PanelResizeHandle>
-      <Panel
-        defaultSize={50}
-        ref={codePanelRef}
-        onMouseDown={() => (compileNodes.current = false)}
-      >
-        <div className="flex flex-col h-full">
-          <CodeEditor
-            ormCode={typeORMCode}
+          <FlowMenu methods={{ removeNode, editNode, appendNode }} />
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            colorMode={colorTheme}
             className="flex-1"
-            wasmModule={wasmModule}
-            nodeManiuplators={{
-              editNode,
-              removeNode,
-            }}
-          />
-        </div>
-      </Panel>
-      <JoinEditor />
-    </PanelGroup>
+          >
+            <Background />
+            <Controls />
+          </ReactFlow>
+        </Panel>
+        <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-900 flex justify-center items-center">
+          <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm">
+            <EllipsisVertical className="h-2.5 w-2.5" />
+          </div>
+        </PanelResizeHandle>
+        <Panel
+          defaultSize={50}
+          ref={codePanelRef}
+          onMouseDown={() => (compileNodes.current = false)}
+        >
+          <div className="flex flex-col h-full">
+            <CodeEditor
+              ormCode={typeORMCode}
+              className="flex-1"
+              wasmModule={wasmModule}
+              nodeManiuplators={{
+                editNode,
+                removeNode,
+              }}
+            />
+          </div>
+        </Panel>
+        <JoinEditor />
+      </PanelGroup>
+      <ColumnEditor open={showEditingPane} />
+    </>
   );
 }
 

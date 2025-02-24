@@ -46,13 +46,14 @@ export const getDefaultColumn = (
  * @returns
  */
 export const getDefaultTable = (
-  id: string | number,
+  id: string,
+  name: string,
   onChange: (id: string, data: Partial<TableProps>) => void,
   onDelete: (id: string) => void,
 ): TableDataProps => {
   const table: TableDataProps = {
     id: id.toString(),
-    name: "",
+    name: name,
     dbName: "",
     primaryKey: "",
     description: "",

@@ -32,7 +32,7 @@ export default function RootLayout({
       >
         <AppProvider>
           <EditorProvider>
-            <main className="flex flex-col min-h-screen">
+            <main className="flex flex-col h-screen">
               {/* Navbar Here */}
               {children}
             </main>

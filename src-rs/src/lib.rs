@@ -115,6 +115,9 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                                     target_column
                                 ));
                         }
+                        if is_index {
+                            column_decorator.push_str("\n    @Index()");
+                        }
                         // Generate the column definition
                         entity_code.push_str(&format!(
                             "    {}\n    {}: {};\n\n",
@@ -127,6 +130,9 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                         } else {
                             "@PrimaryGeneratedColumn()".to_string()
                         };
+                        if is_index {
+                            column_decorator.push_str("\n    @Index()");
+                        }
                         // Generate the column definition
                         entity_code.push_str(&format!(
                             "    {}\n    {}: {};\n\n",
@@ -134,7 +140,9 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                         ));
                     } else if is_auto_increment {
                         column_decorator = "@PrimaryGeneratedColumn(\"increment\")".to_string();
-
+                        if is_index {
+                            column_decorator.push_str("\n    @Index()");
+                        }
                         // Generate the column definition
                         entity_code.push_str(&format!(
                             "    {}\n    {}: {};\n\n",

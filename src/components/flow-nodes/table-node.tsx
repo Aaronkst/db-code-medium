@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { ReactNode, useCallback, useContext, useMemo, useState } from "react";
-import { IconButton } from "../shared/buttons/icon-button";
+import { Button } from "@/components/ui/button";
+import { Input } from "../ui/input";
 
 export type TableDataProps = TableProps & {
   onChange: (id: string, table: Partial<TableProps>) => void;
@@ -56,71 +57,75 @@ export function TableNode({
   const { setEditingColumn } = useContext(EditorContext);
 
   const renderIcon = useCallback((column: ColumnProps): ReactNode => {
-    if (column.primaryKey) return <Key className="mx-1" size="0.9rem" />;
-    if (column.index) return <Search className="mx-1" size="0.9rem" />;
-    if (column.unique) return <Star className="mx-1" size="0.9rem" />;
-    return "";
+    if (column.primaryKey) return <Key className="w-4 h-4 text-yellow-500" />;
+    if (column.index) return <Search className="w-4 h-4" />;
+    if (column.unique) return <Star className="w-4 h-4" />;
+    return <span className="block w-4 h-4"></span>;
   }, []);
 
   const renderDatatypeIcon = useCallback((column: ColumnProps): ReactNode => {
     switch (column.dataType) {
       case "string":
-        return <ALargeSmall size="0.9rem" />;
+        return <ALargeSmall className="w-4 h-4" />;
 
       case "number":
-        return <FileDigit size="0.9rem" />;
+        return <FileDigit className="w-4 h-4" />;
 
       case "date":
-        return <Calendar size="0.9rem" />;
+        return <Calendar className="w-4 h-4" />;
 
       case "json":
-        return <Braces size="0.9rem" />;
+        return <Braces className="w-4 h-4" />;
 
       case "float":
-        return <FileDigit size="0.9rem" />;
+        return <FileDigit className="w-4 h-4" />;
 
       case "uuid":
-        return <Hash size="0.9rem" />;
+        return <Hash className="w-4 h-4" />;
 
       case "objectId":
-        return <Hash size="0.9rem" />;
+        return <Hash className="w-4 h-4" />;
 
       default:
-        return <Text size="0.9rem" />;
+        return <Text className="w-4 h-4" />;
     }
   }, []);
 
   return (
-    <div className="relative shadow-md rounded-md bg-neutral-100 dark:bg-neutral-900 border border-neutral-400 dark:text-white group/table">
-      <IconButton
-        icon={<Trash size="0.9rem" color="white" />}
-        className="group-hover/table:block hidden absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 rounded-full"
+    <div className="relative shadow-md rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table">
+      <Button
+        size="icon"
+        className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
         onClick={() => data.onDelete(id)}
-      />
+        variant="destructive"
+      >
+        <Trash size="0.8rem" color="white" />
+      </Button>
       <div className="p-3 overflow-hidden">
-        <div className="flex gap-1 z-20">
-          <input
+        <div className="relative z-20">
+          <Input
             type="text"
             value={data.name}
             onChange={(e) => data.onChange(id, { name: e.target.value })}
             autoFocus
-            className="nodrag dark:bg-neutral-600 p-2 flex-1"
           />
-          <IconButton
-            icon={
-              <ChevronRight
-                size="0.9rem"
-                className="duration-500 ease-in-out"
-                style={{
-                  transform: `rotate(${expanded ? "90deg" : "0deg"})`,
-                }}
-              />
-            }
+          <Button
+            size="icon"
             onClick={() => setExpanded(!expanded)}
-          />
+            variant="ghost"
+            className="absolute top-0 bottom-0 right-0"
+          >
+            <ChevronRight
+              size="0.8rem"
+              className="duration-300 ease-in-out"
+              style={{
+                transform: `rotate(${expanded ? "-90deg" : "90deg"})`,
+              }}
+            />
+          </Button>
         </div>
         <div
-          className={`duration-500 ease-in-out z-0 mt-3 transition-all nowheel ${
+          className={`ease-in-out z-0 mt-3 nowheel ${
             expanded
               ? "max-h-[500px] overflow-y-auto"
               : "max-h-0 overflow-hidden"
@@ -131,48 +136,49 @@ export function TableNode({
             {data.columns.map((column, idx) => (
               <div className="flex items-center gap-1" key={idx}>
                 <span>{renderIcon(column)}</span>
-                <div className="flex-1 flex items-stretch nodrag dark:bg-neutral-600 w-full px-2 rounded-md">
-                  <label
-                    htmlFor={"column-name-input-" + idx}
-                    className="px-1 flex items-center"
+                <label
+                  htmlFor={"column-name-input-" + idx}
+                  className="px-1 flex items-center"
+                >
+                  {renderDatatypeIcon(column)}
+                </label>
+                <div className="relative group/column flex-1">
+                  <Input
+                    id={"column-name-input-" + idx}
+                    type="text"
+                    value={column.name}
+                    onChange={(e) =>
+                      data.onChange(id, {
+                        columns: handleColumnChange(idx, {
+                          name: e.target.value,
+                        }),
+                      })
+                    }
+                    autoFocus
+                  />
+                  <Button
+                    size="icon"
+                    onClick={() => setEditingColumn(column)}
+                    variant="secondary"
+                    className="absolute hidden group-hover/column:flex right-0 top-0 bottom-0"
                   >
-                    {renderDatatypeIcon(column)}
-                  </label>
-                  <div className="relative group/column flex-1">
-                    <input
-                      id={"column-name-input-" + idx}
-                      type="text"
-                      value={column.name}
-                      onChange={(e) =>
-                        data.onChange(id, {
-                          columns: handleColumnChange(idx, {
-                            name: e.target.value,
-                          }),
-                        })
-                      }
-                      autoFocus
-                      className="p-2 bg-transparent"
-                    />
-                    <div className="absolute right-0 top-0 bottom-0 rounded-md p-1 hidden group-hover/column:block">
-                      <IconButton
-                        icon={<Pencil size="0.8rem" />}
-                        onClick={() => setEditingColumn(column)}
-                      />
-                    </div>
-                  </div>
+                    <Pencil size="0.8rem" />
+                  </Button>
                 </div>
               </div>
             ))}
             <hr />
-            <IconButton
+            <Button
               className="nodrag"
-              icon={<Plus size="0.9rem" />}
+              // size="icon"
               onClick={() =>
                 data.onChange(id, {
                   columns: [...data.columns, getDefaultColumn(data)],
                 })
               }
-            />
+            >
+              <Plus size="0.8rem" />
+            </Button>
           </div>
         </div>
       </div>

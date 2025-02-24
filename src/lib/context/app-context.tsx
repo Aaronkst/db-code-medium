@@ -14,16 +14,31 @@ const AppContext = createContext<{
 });
 
 const AppProvider = ({ children }: { children: React.ReactNode }) => {
-  const [currentTheme, setCurrentTheme] = useState<"dark" | "light">("light");
-  const [colorTheme, _setColorTheme] = useState<colorTheme>("light");
+  const [systemTheme, setSystemTheme] = useState<"dark" | "light">("light");
+  const [colorTheme, _setColorTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
-    const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
-    setCurrentTheme(prefersDarkScheme.matches ? "dark" : "light");
+    let theme = localStorage.getItem("theme") as "dark" | "light";
+    if (!theme) {
+      const prefersDarkScheme = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      );
+      theme = prefersDarkScheme.matches ? "dark" : "light";
+    }
+    setSystemTheme(theme);
+    setColorTheme(theme);
+    if (document) {
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
   }, []);
 
   function setColorTheme(theme: colorTheme) {
-    _setColorTheme(theme === "system" ? currentTheme : theme);
+    theme === "system" ? systemTheme : theme;
+    if (document) {
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
+    localStorage.setItem("theme", theme);
+    _setColorTheme(theme as "dark" | "light");
   }
 
   return (

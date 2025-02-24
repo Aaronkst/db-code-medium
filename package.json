@@ -13,9 +13,18 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
+    "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-label": "^2.1.2",
+    "@radix-ui/react-menubar": "^1.1.6",
+    "@radix-ui/react-navigation-menu": "^1.2.5",
+    "@radix-ui/react-select": "^2.1.6",
+    "@radix-ui/react-slot": "^1.1.2",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
     "@xyflow/react": "^12.3.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "lodash": "^4.17.21",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.0.9",
@@ -23,7 +32,9 @@
     "prettier": "^3.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-resizable-panels": "^2.1.7"
+    "react-resizable-panels": "^2.1.7",
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/lodash": "^4.17.14",

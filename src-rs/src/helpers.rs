@@ -69,8 +69,8 @@ pub fn get_default_column() -> Value {
 pub fn foreign_key_options_extractor(arguments: &Vec<Value>, key_type: &str) -> Value {
     let mut foreign_key = json!({
         "target": null,
-        "onDelete": "RESTRICT",
-        "onUpdate": "RESTRICT",
+        "onDelete": "CASCADE",
+        "onUpdate": "CASCADE",
         "through": null,
         "source": null,
         "type": key_type
