@@ -150,20 +150,34 @@ function App({ project }: AppProps) {
 
   useEffect(() => {
     if (!initialized) {
+      let nodes: Node<TableProps>[] = [];
+      let edges: Edge<TableProps>[] = [];
       if (!project) {
         //... fetch local storage
-        const nodes = localStorage.getItem("nodes");
-        const edges = localStorage.getItem("edges");
+        const localNodes = localStorage.getItem("nodes");
+        const localEdges = localStorage.getItem("edges");
         try {
-          if (nodes) setNodes(JSON.parse(nodes));
-          if (edges) setEdges(JSON.parse(edges));
+          if (localNodes) nodes = JSON.parse(localNodes);
+          if (localEdges) edges = JSON.parse(localEdges);
         } catch (err) {
           // JSON parse error.
         }
       } else {
-        setNodes(project.nodes);
-        setEdges(project.edges);
+        nodes = project.nodes;
+        edges = project.edges;
       }
+      setNodes(
+        nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onChange: editNode,
+            onDelete: removeNode,
+          },
+        })),
+      );
+      setEdges(edges);
+
       setInitialized(true);
     } else if (!!wasmModule) {
       setLoading(false);
