@@ -22,7 +22,14 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { Label } from "../ui/label";
 import {
   Select,
@@ -211,6 +218,10 @@ export function JoinEditor() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Join Settings</DialogTitle>
+          <DialogDescription>
+            Make changes to your foreign key settings here. Click save when
+            you're done.
+          </DialogDescription>
         </DialogHeader>
         {currentNode && (
           <form onClick={handleFormSubmit} className="flex flex-col gap-3">
@@ -373,7 +384,8 @@ export function JoinEditor() {
 
             {/* TODO: through */}
 
-            <div className="flex gap-4 justify-between">
+            <DialogFooter className="flex gap-4 justify-between">
+              {/* <div className="flex gap-4 justify-between"> */}
               <Button type="submit">
                 <CheckIcon size="0.8rem" />
                 Save
@@ -386,7 +398,8 @@ export function JoinEditor() {
               >
                 <TrashIcon size="0.8rem" />
               </Button>
-            </div>
+              {/* </div> */}
+            </DialogFooter>
           </form>
         )}
       </DialogContent>

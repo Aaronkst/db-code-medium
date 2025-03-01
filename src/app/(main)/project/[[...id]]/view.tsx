@@ -370,6 +370,7 @@ function App({ project }: AppProps) {
         >
           <FlowMenu methods={{ removeNode, editNode, appendNode }} />
           <ReactFlow
+            id="node-canvas"
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
