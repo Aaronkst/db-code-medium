@@ -129,7 +129,6 @@ const CodeEditor = memo(
               }
 
               for (const connection of connections) {
-                // TODO: add source joins to all parsedNodes.
                 const targetTableIdx = parsedNodes.findIndex(
                   (node) => node.id === connection.target,
                 );

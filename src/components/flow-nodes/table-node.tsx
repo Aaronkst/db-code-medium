@@ -3,7 +3,7 @@
 import { EditorContext } from "@/lib/context/editor-context";
 import { getDefaultColumn } from "@/lib/flow-editors/helpers";
 import type { ColumnProps, TableProps } from "@/lib/types/database-types";
-import { Handle, Node, NodeProps, Position } from "@xyflow/react";
+import { Handle, Node, NodeProps, NodeToolbar, Position } from "@xyflow/react";
 import {
   ALargeSmall,
   Braces,
@@ -96,18 +96,28 @@ export function TableNode({
   return (
     <div
       className={cn(
-        "relative rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table",
+        "rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table",
         selected ? "border-2 border-sky-500 dark:border-sky-900" : "",
       )}
     >
-      <Button
+      {/* <Button
         size="icon"
         className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
         onClick={() => data.onDelete(id)}
         variant="destructive"
       >
         <Trash size="0.8rem" color="white" />
-      </Button>
+      </Button> */}
+      <NodeToolbar isVisible={selected} position={Position.Top}>
+        <Button
+          size="icon"
+          // className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
+          onClick={() => data.onDelete(id)}
+          variant="destructive"
+        >
+          <Trash size="0.8rem" color="white" />
+        </Button>
+      </NodeToolbar>
       <div className="p-3 overflow-hidden">
         <div className="relative z-20">
           <Input
