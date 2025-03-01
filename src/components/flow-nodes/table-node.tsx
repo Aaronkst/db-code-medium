@@ -23,6 +23,7 @@ import { nanoid } from "nanoid";
 import { ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "../ui/input";
+import { cn } from "@/lib/utils";
 
 export type TableDataProps = TableProps & {
   onChange: (id: string, table: Partial<TableProps>) => void;
@@ -32,6 +33,7 @@ export type TableDataProps = TableProps & {
 export function TableNode({
   id,
   data,
+  selected,
 }: NodeProps<Node<TableDataProps, "tableData">>) {
   const [expanded, setExpanded] = useState<boolean>(true);
 
@@ -92,7 +94,12 @@ export function TableNode({
   }, []);
 
   return (
-    <div className="relative shadow-md rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table">
+    <div
+      className={cn(
+        "relative rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table",
+        selected ? "border-2 border-sky-500 dark:border-sky-900" : "",
+      )}
+    >
       <Button
         size="icon"
         className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
@@ -108,12 +115,13 @@ export function TableNode({
             value={data.name}
             onChange={(e) => data.onChange(id, { name: e.target.value })}
             autoFocus
+            className="nodrag"
           />
           <Button
             size="icon"
             onClick={() => setExpanded(!expanded)}
             variant="ghost"
-            className="absolute top-0 bottom-0 right-0"
+            className="absolute top-0 bottom-0 right-0 nodrag"
           >
             <ChevronRight
               size="0.8rem"
@@ -182,41 +190,42 @@ export function TableNode({
           </div>
         </div>
       </div>
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={"_source_" + joinTargets.length}
+        style={{ top: 10 }}
+        isConnectable
+      />
       {joinTargets.map((join, idx) => (
         <Handle
           key={"_source_-" + idx}
           type="source" // target other sources from this node
           position={Position.Right}
           id={"_source_" + idx}
-          style={{ top: 20 + (idx + 2) * 10 }}
+          style={{ top: 20 + idx * 10 }}
           isConnectable={false}
         />
       ))}
+
       <Handle
-        type="source"
-        position={Position.Right}
-        id={"_source_" + joinTargets.length}
-        style={{ top: 30 }}
+        type="target"
+        position={Position.Left}
+        id={"_target_" + joinSources.length}
+        style={{ top: 10 }}
         isConnectable
       />
-
       {joinSources.map((join, idx) => (
         <Handle
           key={"_target_" + idx}
           type="target" // other source will target this node
           position={Position.Left}
           id={"_target_" + idx}
-          style={{ top: 20 + (idx + 2) * 10 }}
+          style={{ top: 20 + idx * 10 }}
           isConnectable={false}
         />
       ))}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id={"_target_" + joinSources.length}
-        style={{ top: 30 }}
-        isConnectable
-      />
     </div>
   );
 }

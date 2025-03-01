@@ -262,6 +262,47 @@ function App({ project }: AppProps) {
 
         setEditingJoin(join); // open modal on selecting an edge.
       }
+      if (change?.type === "remove") {
+        const joinId = change.id;
+
+        const splitId = joinId.split("-");
+        const currentNodeId = splitId[0].split("_source")[0];
+        const targetNodeId = splitId[0].split("_source")[1];
+
+        const currentNode = nodes.find(
+          (node) => node.data.id === currentNodeId,
+        );
+        const targetTable = nodes.find((node) => node.data.id === targetNodeId);
+
+        if (!currentNode || !targetTable) return;
+
+        const sourceJoinIdx = currentNode.data.joins.findIndex(
+          (join) => join.id === joinId,
+        );
+
+        const targetJoinIdx = targetTable.data.joins.findIndex(
+          (join) => join.id === joinId,
+        );
+
+        if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
+
+        const sourceJoins = [...currentNode.data.joins];
+        sourceJoins.splice(sourceJoinIdx, 1);
+
+        const targetJoins = [...targetTable.data.joins];
+        targetJoins.splice(targetJoinIdx, 1);
+
+        // apply join updates
+        setNodes((nds) => {
+          return updateNodes(
+            [
+              { id: currentNode.id, joins: sourceJoins },
+              { id: targetTable.id, joins: targetJoins },
+            ],
+            nds,
+          );
+        });
+      }
 
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
