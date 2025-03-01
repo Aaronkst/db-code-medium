@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AppContext } from "@/lib/context/app-context";
 import {
   getNodesBounds,
   getViewportForBounds,
@@ -16,7 +15,7 @@ import {
 } from "@xyflow/react";
 import { toBlob } from "html-to-image";
 import { DownloadIcon } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ImageExportDialogProps = {
   open: boolean;
@@ -29,7 +28,12 @@ const imageHeight = 768;
 
 export function ImageExportDialog({ open, onClose }: ImageExportDialogProps) {
   const { getNodes } = useReactFlow();
-  const [image, setImage] = useState<string>();
+  const [image, setImage] = useState<Blob>();
+
+  const url = useMemo(() => {
+    if (!image) return;
+    return URL.createObjectURL(image);
+  }, [image]);
 
   useEffect(() => {
     if (image || !open) return;
@@ -59,7 +63,7 @@ export function ImageExportDialog({ open, onClose }: ImageExportDialogProps) {
         },
       })
         .then((blob) => {
-          if (blob) setImage(URL.createObjectURL(blob));
+          if (blob) setImage(blob);
         })
         .catch((err) => {
           console.log(err);
@@ -68,11 +72,17 @@ export function ImageExportDialog({ open, onClose }: ImageExportDialogProps) {
   }, [image, open]);
 
   const downloadImage = () => {
-    if (!image) return;
+    if (!url) return;
     const a = document.createElement("a");
-    a.setAttribute("download", "reactflow.png");
-    a.setAttribute("href", image);
+    a.setAttribute(
+      "download",
+      `enterpretor_diagram_${new Date().getTime()}.png`,
+    );
+    a.setAttribute("href", url);
     a.click();
+
+    URL.revokeObjectURL(url);
+    setImage(undefined);
   };
 
   return (
@@ -93,9 +103,9 @@ export function ImageExportDialog({ open, onClose }: ImageExportDialogProps) {
             Make changes to your profile here. Click save when you're done.
           </DialogDescription> */}
         </DialogHeader>
-        <div>{image ? <img src={image} /> : "Taking ss."}</div>
+        <div>{image ? <img src={url} /> : "Taking ss."}</div>
         <DialogFooter>
-          <Button disabled={!image} onClick={downloadImage}>
+          <Button disabled={!url} onClick={downloadImage}>
             <DownloadIcon />
             <span>Download Image</span>
           </Button>
