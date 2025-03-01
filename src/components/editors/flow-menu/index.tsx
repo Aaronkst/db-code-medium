@@ -15,7 +15,8 @@ import type { TableProps } from "@/lib/types/database-types";
 import { DatabaseIcon, DatabaseZapIcon } from "lucide-react";
 import { Button } from "../../ui/button";
 import { ImageExportDialog } from "./image-export";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { EditorContext } from "@/lib/context/editor-context";
 
 type FlowMenuProps = {
   methods: {
@@ -29,6 +30,27 @@ export function FlowMenu({
   methods: { removeNode, editNode, appendNode },
 }: FlowMenuProps) {
   const [exportImage, setExportImage] = useState<boolean>(false);
+  const { nodes, edges } = useContext(EditorContext);
+
+  const exportJson = () => {
+    const payload = JSON.stringify({
+      nodes,
+      edges,
+    });
+
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.setAttribute(
+      "download",
+      `enterpretor_diagram_${new Date().getTime()}.json`,
+    );
+    a.setAttribute("href", url);
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <Menubar className="rounded-none border-none border-b">
@@ -52,7 +74,7 @@ export function FlowMenu({
             <MenubarSub>
               <MenubarSubTrigger>Export</MenubarSubTrigger>
               <MenubarSubContent>
-                <MenubarItem>JSON</MenubarItem>
+                <MenubarItem onClick={exportJson}>JSON</MenubarItem>
                 <MenubarItem onClick={() => setExportImage(true)}>
                   Image
                 </MenubarItem>
