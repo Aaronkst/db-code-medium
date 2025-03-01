@@ -47,14 +47,20 @@ const nodeTypes = {
   table: TableNode,
 };
 
-type AppProps = {
-  // TODO: App settings; types.ts?
-  dbType: string; // TODO: use string types later.
+// Migrate to api lib later
+export type ProjectT = {
+  dbType: string;
   nodes: Node<TableProps>[];
   edges: Edge<TableProps>[];
 };
 
-function App() {
+type AppProps = {
+  project?: ProjectT;
+};
+
+function App({ project }: AppProps) {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [initialized, setInitialized] = useState<boolean>(false);
   const [wasmModule, setWasmModule] =
     useState<typeof import("@/wasm/src_rs")>();
   const [typeORMCode, setTypeORMCode] = useState<string>("");
@@ -75,13 +81,6 @@ function App() {
   // add more conditions as more editors are added.
   // TODO: table editor
   const showEditingPane = useMemo(() => !!editingColumn, [editingColumn]);
-
-  // code compilers
-  // useEffect(() => {
-  //   editorPanelRef.current?.resize(showEditingPane ? 15 : 0);
-  //   nodePanelRef.current?.resize(showEditingPane ? 45 : 50);
-  //   codePanelRef.current?.resize(showEditingPane ? 40 : 50);
-  // }, [showEditingPane]);
 
   const debouncedCompileToTypeORM = useMemo(
     () =>
@@ -148,6 +147,28 @@ function App() {
     };
     if (!wasmModule) loadWasm();
   }, [wasmModule]);
+
+  useEffect(() => {
+    if (!initialized) {
+      if (!project) {
+        //... fetch local storage
+        const nodes = localStorage.getItem("nodes");
+        const edges = localStorage.getItem("edges");
+        try {
+          if (nodes) setNodes(JSON.parse(nodes));
+          if (edges) setEdges(JSON.parse(edges));
+        } catch (err) {
+          // JSON parse error.
+        }
+      } else {
+        setNodes(project.nodes);
+        setEdges(project.edges);
+      }
+      setInitialized(true);
+    } else if (!!wasmModule) {
+      setLoading(false);
+    }
+  }, [wasmModule, project, initialized]);
 
   useEffect(() => {
     if (!wasmModule || !compileNodes.current) return;
@@ -324,6 +345,8 @@ function App() {
     });
   }, []);
 
+  if (loading) return "Loading...";
+
   return (
     <>
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
@@ -389,10 +412,10 @@ function App() {
   );
 }
 
-export function AppView() {
+export function AppView({ project }: AppProps) {
   return (
     <ReactFlowProvider>
-      <App />
+      <App project={project} />
     </ReactFlowProvider>
   );
 }

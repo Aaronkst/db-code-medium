@@ -7,10 +7,12 @@ import type {
   TableProps,
 } from "@/lib/types/database-types";
 import type { Edge, Node } from "@xyflow/react";
+import { debounce } from "lodash";
 import {
   createContext,
   type Dispatch,
   type SetStateAction,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -38,6 +40,10 @@ const EditorContext = createContext<{
   setEditingJoin: () => {},
 });
 
+const debouncedSetLocalStorage = debounce((key: string, value: string) => {
+  localStorage.setItem(key, value);
+}, 300);
+
 const EditorProvider = ({ children }: { children: React.ReactNode }) => {
   const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
   const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
@@ -54,6 +60,14 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
   function setEditingJoin(join: JoinProps | null) {
     _setEditingJoin(join);
   }
+
+  useEffect(() => {
+    debouncedSetLocalStorage("nodes", JSON.stringify(nodes));
+  }, [nodes]);
+
+  useEffect(() => {
+    debouncedSetLocalStorage("edges", JSON.stringify(edges));
+  }, [edges]);
 
   return (
     <EditorContext.Provider
