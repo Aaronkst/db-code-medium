@@ -12,11 +12,20 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import type { TableProps } from "@/lib/types/database-types";
-import { DatabaseIcon, DatabaseZapIcon } from "lucide-react";
+import {
+  DatabaseIcon,
+  DatabaseZapIcon,
+  DownloadIcon,
+  PlusIcon,
+  UploadIcon,
+  UsersIcon,
+} from "lucide-react";
 import { Button } from "../../ui/button";
 import { ImageExportDialog } from "./image-export";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { EditorContext } from "@/lib/context/editor-context";
+import { toast } from "sonner";
+import { importJson } from "@/lib/flow-editors/helpers";
 
 type FlowMenuProps = {
   methods: {
@@ -30,7 +39,10 @@ export function FlowMenu({
   methods: { removeNode, editNode, appendNode },
 }: FlowMenuProps) {
   const [exportImage, setExportImage] = useState<boolean>(false);
-  const { nodes, edges } = useContext(EditorContext);
+  const [files, setFiles] = useState<FileList | null>(null);
+  const { nodes, edges, setNodes, setEdges } = useContext(EditorContext);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exportJson = () => {
     const payload = JSON.stringify({
@@ -49,44 +61,100 @@ export function FlowMenu({
     a.click();
 
     URL.revokeObjectURL(url);
+
+    toast.success("Successfully exported! 🎉");
   };
 
+  useEffect(() => {
+    if (!files || !files.length) return;
+    const file = files[0];
+    if (file.type === "application/json") {
+      toast.promise(
+        importJson(file, (nodes, edges) => {
+          setNodes(
+            nodes.map((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                onDelete: removeNode,
+                onChange: editNode,
+              },
+            })),
+          );
+          setEdges(edges);
+        }),
+        {
+          loading: "Processing...",
+          success: () => "Successfully imported! 🎉",
+          error: "Wrong JSON file format ☹️",
+        },
+      );
+    }
+    // cleanup files
+    return () => setFiles(null);
+  }, [files]);
+
   return (
-    <>
+    <div className="flex justify-between">
       <Menubar className="rounded-none border-none border-b">
-        {/* <Button onClick={appendNode} variant="ghost" size="sm">
-          Add Entity
-        </Button> */}
         <MenubarMenu>
           <MenubarTrigger className="cursor-pointer">File</MenubarTrigger>
           <MenubarContent>
-            <MenubarItem onClick={appendNode} className="cursor-pointer">
-              Add Entity
+            <MenubarItem disabled className="cursor-pointer gap-2">
+              <UsersIcon size="0.8rem" />
+              <span>Collaborators</span>
             </MenubarItem>
             <MenubarSeparator />
             <MenubarSub>
-              <MenubarSubTrigger>Import</MenubarSubTrigger>
+              <MenubarSubTrigger className="cursor-pointer gap-2">
+                <DownloadIcon size="0.8rem" />
+                <span>Import</span>
+              </MenubarSubTrigger>
               <MenubarSubContent>
-                <MenubarItem>JSON</MenubarItem>
-                <MenubarItem>Mermaid</MenubarItem>
+                <MenubarItem
+                  className="cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  JSON
+                </MenubarItem>
+                {/* <MenubarItem className="cursor-pointer">Mermaid</MenubarItem> */}
               </MenubarSubContent>
             </MenubarSub>
             <MenubarSub>
-              <MenubarSubTrigger>Export</MenubarSubTrigger>
+              <MenubarSubTrigger className="cursor-pointer gap-2">
+                <UploadIcon size="0.8rem" />
+                <span>Export</span>
+              </MenubarSubTrigger>
               <MenubarSubContent>
-                <MenubarItem onClick={exportJson}>JSON</MenubarItem>
-                <MenubarItem onClick={() => setExportImage(true)}>
+                <MenubarItem className="cursor-pointer" onClick={exportJson}>
+                  JSON
+                </MenubarItem>
+                <MenubarItem
+                  className="cursor-pointer"
+                  onClick={() => setExportImage(true)}
+                >
                   Image
                 </MenubarItem>
               </MenubarSubContent>
             </MenubarSub>
           </MenubarContent>
         </MenubarMenu>
+        <Button onClick={appendNode} variant="ghost" size="sm">
+          <span>New Entity</span>
+          <PlusIcon size="0.8rem" />
+        </Button>
       </Menubar>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="application/json"
+        onChange={(e) => setFiles(e.target.files)}
+      />
       <ImageExportDialog
         open={exportImage}
         onClose={() => setExportImage(false)}
       />
-    </>
+    </div>
   );
 }

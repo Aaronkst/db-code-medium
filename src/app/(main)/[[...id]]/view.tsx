@@ -404,6 +404,7 @@ function App({ project }: AppProps) {
 
   return (
     <>
+      <FlowMenu methods={{ removeNode, editNode, appendNode }} />
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
         {/* <Panel
         defaultSize={0}
@@ -423,7 +424,6 @@ function App({ project }: AppProps) {
           ref={nodePanelRef}
           onMouseDown={() => (compileNodes.current = true)}
         >
-          <FlowMenu methods={{ removeNode, editNode, appendNode }} />
           <ReactFlow
             id="node-canvas"
             nodes={nodes}

@@ -1,5 +1,6 @@
 import type { TableDataProps } from "@/components/flow-nodes/table-node";
 import type { ColumnProps, TableProps } from "@/lib/types/database-types";
+import type { Edge, Node } from "@xyflow/react";
 import { nanoid } from "nanoid";
 
 /**
@@ -75,4 +76,18 @@ export const getDefaultTable = (
   table.primaryKey = column.id;
 
   return table;
+};
+
+/**
+ * Helper function to parse uploaded JSON file
+ * @param file
+ * @param onParse
+ */
+export const importJson = async (
+  file: File,
+  onParse: (nodes: Node<TableProps>[], edges: Edge<TableProps>[]) => void,
+) => {
+  const payload = JSON.parse(await file.text());
+  if (!payload.nodes && !payload.edges) throw new Error("Invalid format.");
+  onParse(payload.nodes, payload.edges);
 };
