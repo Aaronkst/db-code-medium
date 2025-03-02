@@ -73,7 +73,7 @@ const CodeEditor = memo(
             } = await response.json();
 
             if (data.data) {
-              const convertedNodes = wasmModule.convert_from_typeorm_v2(
+              const convertedNodes = wasmModule.convert_from_typeorm(
                 JSON.stringify(data.data),
               );
 
