@@ -27,20 +27,11 @@ import { EditorContext } from "@/lib/context/editor-context";
 import { toast } from "sonner";
 import { importJson } from "@/lib/flow-editors/helpers";
 
-type FlowMenuProps = {
-  methods: {
-    removeNode: (id: string) => void;
-    editNode: (id: string, data: Partial<TableProps>) => void;
-    appendNode: () => void;
-  };
-};
-
-export function FlowMenu({
-  methods: { removeNode, editNode, appendNode },
-}: FlowMenuProps) {
+export function FlowMenu() {
   const [exportImage, setExportImage] = useState<boolean>(false);
   const [files, setFiles] = useState<FileList | null>(null);
-  const { nodes, edges, setNodes, setEdges } = useContext(EditorContext);
+  const { nodes, edges, setNodes, setEdges, appendNode, editNode, removeNode } =
+    useContext(EditorContext);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

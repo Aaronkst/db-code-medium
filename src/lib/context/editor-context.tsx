@@ -6,7 +6,7 @@ import type {
   JoinProps,
   TableProps,
 } from "@/lib/types/database-types";
-import type { Edge, Node } from "@xyflow/react";
+import { applyNodeChanges, type Edge, type Node } from "@xyflow/react";
 import { debounce } from "lodash";
 import {
   createContext,
@@ -16,6 +16,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { deleteNodes, updateNodes } from "../flow-editors/nodes";
+import { nanoid } from "nanoid";
+import { getDefaultTable } from "../flow-editors/helpers";
 
 const EditorContext = createContext<{
   // tables and relations
@@ -28,7 +31,11 @@ const EditorContext = createContext<{
   setEditingColumn: (column: ColumnProps | null) => void;
   editingJoin: JoinProps | null;
   setEditingJoin: (column: JoinProps | null) => void;
-  // validation checks
+  // custom node crud
+  removeNode: (id: string) => void;
+  editNode: (id: string, data: Partial<TableProps>) => void;
+  appendNode: () => void;
+  duplicateNode: (id: string) => void;
 }>({
   nodes: [],
   setNodes: () => {},
@@ -38,6 +45,10 @@ const EditorContext = createContext<{
   setEditingColumn: () => {},
   editingJoin: null,
   setEditingJoin: () => {},
+  removeNode: () => {},
+  editNode: () => {},
+  appendNode: () => {},
+  duplicateNode: () => {},
 });
 
 const debouncedSetLocalStorage = debounce((key: string, value: string) => {
@@ -69,6 +80,63 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
     debouncedSetLocalStorage("edges", JSON.stringify(edges));
   }, [edges]);
 
+  // custom node crud
+  function removeNode(id: string) {
+    setNodes((nds) => deleteNodes(id, nds));
+  }
+  function editNode(id: string, data: Partial<TableProps>) {
+    setNodes((nds) => updateNodes({ ...data, id }, nds));
+  }
+  function appendNode() {
+    setNodes((nds) => {
+      const nodeId = nanoid();
+      const nodes = [
+        ...nds,
+        {
+          id: nodeId,
+          position: { x: 10, y: 10 },
+          type: "table",
+          data: getDefaultTable(nodeId, `Entity_${nds.length}`),
+        },
+      ];
+      return applyNodeChanges(
+        nodes.map((node) => ({
+          type: "select",
+          id: node.id,
+          selected: node.id === nodeId,
+        })),
+        nodes,
+      );
+    });
+  }
+  function duplicateNode(id: string) {
+    setNodes((nds) => {
+      const node = nds.find((node) => node.id === id);
+      if (!node) return nds;
+      const nodeId = nanoid();
+      const nodes = [
+        ...nds,
+        {
+          id: nodeId,
+          position: { x: node.position.x + 10, y: node.position.y + 10 },
+          type: "table",
+          data: {
+            ...node.data,
+            id: nodeId,
+          },
+        },
+      ];
+      return applyNodeChanges(
+        nodes.map((node) => ({
+          type: "select",
+          id: node.id,
+          selected: node.id === nodeId,
+        })),
+        nodes,
+      );
+    });
+  }
+
   return (
     <EditorContext.Provider
       value={{
@@ -83,7 +151,11 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
         // join
         editingJoin,
         setEditingJoin,
-        // duplicates,
+        // custom node crud
+        removeNode,
+        editNode,
+        appendNode,
+        duplicateNode,
       }}
     >
       {children}

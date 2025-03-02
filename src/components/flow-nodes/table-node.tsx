@@ -9,6 +9,7 @@ import {
   Braces,
   Calendar,
   ChevronRight,
+  Copy,
   FileDigit,
   Hash,
   Key,
@@ -20,22 +21,25 @@ import {
   Trash,
 } from "lucide-react";
 import { nanoid } from "nanoid";
-import { ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import {
+  memo,
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "../ui/input";
 import { cn } from "@/lib/utils";
 
-export type TableDataProps = TableProps & {
-  onChange: (id: string, table: Partial<TableProps>) => void;
-  onDelete: (id: string) => void;
-};
-
-export function TableNode({
+function TableNodeComponent({
   id,
   data,
   selected,
-}: NodeProps<Node<TableDataProps, "tableData">>) {
+}: NodeProps<Node<TableProps, "tableData">>) {
   const [expanded, setExpanded] = useState<boolean>(true);
+  const { removeNode, editNode, duplicateNode } = useContext(EditorContext);
 
   const joinTargets = useMemo(
     () => data.joins.filter((join) => !!join.target),
@@ -103,27 +107,31 @@ export function TableNode({
       {/* <Button
         size="icon"
         className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
-        onClick={() => data.onDelete(id)}
+        onClick={() => removeNode(id)}
         variant="destructive"
       >
         <Trash size="0.8rem" color="white" />
       </Button> */}
-      <NodeToolbar isVisible={selected} position={Position.Top}>
-        <Button
-          size="icon"
-          // className="group-hover/table:flex hidden absolute -top-6 -right-6 rounded-3xl"
-          onClick={() => data.onDelete(id)}
-          variant="destructive"
-        >
-          <Trash size="0.8rem" color="white" />
-        </Button>
+      <NodeToolbar isVisible={selected} position={Position.Right}>
+        <div className="flex flex-col gap-2">
+          <Button size="icon" onClick={() => duplicateNode(id)}>
+            <Copy size="0.8rem" />
+          </Button>
+          <Button
+            size="icon"
+            onClick={() => removeNode(id)}
+            variant="destructive"
+          >
+            <Trash size="0.8rem" color="white" />
+          </Button>
+        </div>
       </NodeToolbar>
       <div className="p-3 overflow-hidden">
         <div className="relative z-20">
           <Input
             type="text"
             value={data.name}
-            onChange={(e) => data.onChange(id, { name: e.target.value })}
+            onChange={(e) => editNode(id, { name: e.target.value })}
             autoFocus
             className="nodrag"
           />
@@ -166,7 +174,7 @@ export function TableNode({
                     type="text"
                     value={column.name}
                     onChange={(e) =>
-                      data.onChange(id, {
+                      editNode(id, {
                         columns: handleColumnChange(idx, {
                           name: e.target.value,
                         }),
@@ -190,7 +198,7 @@ export function TableNode({
               className="nodrag"
               // size="icon"
               onClick={() =>
-                data.onChange(id, {
+                editNode(id, {
                   columns: [...data.columns, getDefaultColumn(data)],
                 })
               }
@@ -239,3 +247,7 @@ export function TableNode({
     </div>
   );
 }
+
+TableNodeComponent.displayName = "TableNode";
+
+export const TableNode = memo(TableNodeComponent);

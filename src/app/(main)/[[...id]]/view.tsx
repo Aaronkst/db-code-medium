@@ -166,16 +166,7 @@ function App({ project }: AppProps) {
         nodes = project.nodes;
         edges = project.edges;
       }
-      setNodes(
-        nodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            onChange: editNode,
-            onDelete: removeNode,
-          },
-        })),
-      );
+      setNodes(nodes);
       setEdges(edges);
 
       setInitialized(true);
@@ -194,41 +185,6 @@ function App({ project }: AppProps) {
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
     [],
   );
-
-  // custom node crud
-  const removeNode = (id: string) => {
-    setNodes((nds) => deleteNodes(id, nds));
-  };
-  const editNode = (id: string, data: Partial<TableProps>) => {
-    setNodes((nds) => updateNodes({ ...data, id }, nds));
-  };
-  const appendNode = () => {
-    setNodes((nds) => {
-      const nodeId = nanoid();
-      const nodes = [
-        ...nds,
-        {
-          id: nodeId,
-          position: { x: 10, y: 10 },
-          type: "table",
-          data: getDefaultTable(
-            nodeId,
-            `Entity_${nds.length}`,
-            editNode,
-            removeNode,
-          ),
-        },
-      ];
-      return applyNodeChanges(
-        nodes.map((node) => ({
-          type: "select",
-          id: node.id,
-          selected: node.id === nodeId,
-        })),
-        nodes,
-      );
-    });
-  };
 
   // apply `colum-editor` updates.
   useEffect(() => {
@@ -404,7 +360,7 @@ function App({ project }: AppProps) {
 
   return (
     <>
-      <FlowMenu methods={{ removeNode, editNode, appendNode }} />
+      <FlowMenu />
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
         {/* <Panel
         defaultSize={0}
@@ -454,10 +410,6 @@ function App({ project }: AppProps) {
               ormCode={typeORMCode}
               className="flex-1"
               wasmModule={wasmModule}
-              nodeManiuplators={{
-                editNode,
-                removeNode,
-              }}
             />
           </div>
         </Panel>

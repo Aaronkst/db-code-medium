@@ -14,25 +14,24 @@ type CodeEditorProps = {
   ormCode: string;
   className?: string;
   wasmModule?: typeof import("@/wasm/src_rs");
-  nodeManiuplators: {
-    editNode: (id: string, data: Partial<TableProps>) => void;
-    removeNode: (id: string) => void;
-  };
 };
 
 type ESLintProgram = ReturnType<typeof parse>;
 
 /* <div>[TODO] Language: Typescript, Syntax: TypeORM</div> */
 const CodeEditor = memo(
-  ({
-    ormCode,
-    className,
-    wasmModule,
-    nodeManiuplators: { editNode, removeNode },
-  }: CodeEditorProps) => {
+  ({ ormCode, className, wasmModule }: CodeEditorProps) => {
     const { colorTheme } = useContext(AppContext);
-    const { nodes, setNodes, edges, setEdges, setEditingJoin, editingColumn } =
-      useContext(EditorContext);
+    const {
+      nodes,
+      setNodes,
+      edges,
+      setEdges,
+      setEditingJoin,
+      editingColumn,
+      editNode,
+      removeNode,
+    } = useContext(EditorContext);
 
     const editorRef = useRef<any>(null);
 

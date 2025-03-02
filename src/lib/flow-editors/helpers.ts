@@ -1,4 +1,3 @@
-import type { TableDataProps } from "@/components/flow-nodes/table-node";
 import type { ColumnProps, TableProps } from "@/lib/types/database-types";
 import type { Edge, Node } from "@xyflow/react";
 import { nanoid } from "nanoid";
@@ -46,13 +45,8 @@ export const getDefaultColumn = (
  * @param onDelete
  * @returns
  */
-export const getDefaultTable = (
-  id: string,
-  name: string,
-  onChange: (id: string, data: Partial<TableProps>) => void,
-  onDelete: (id: string) => void,
-): TableDataProps => {
-  const table: TableDataProps = {
+export const getDefaultTable = (id: string, name: string): TableProps => {
+  const table: TableProps = {
     id: id.toString(),
     name: name,
     dbName: "",
@@ -62,8 +56,6 @@ export const getDefaultTable = (
     engine: "InnoDB", // for MySQL only
     columns: [],
     joins: [],
-    onChange,
-    onDelete,
   };
 
   const column = getDefaultColumn(table, {
