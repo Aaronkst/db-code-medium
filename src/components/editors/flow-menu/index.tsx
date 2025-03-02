@@ -89,7 +89,11 @@ export function FlowMenu() {
     <div className="flex justify-between">
       <Menubar className="rounded-none border-none border-b">
         <MenubarMenu>
-          <MenubarTrigger className="cursor-pointer">File</MenubarTrigger>
+          <MenubarTrigger asChild>
+            <Button className="cursor-pointer" variant="ghost" size="sm">
+              File
+            </Button>
+          </MenubarTrigger>
           <MenubarContent>
             <MenubarItem disabled className="cursor-pointer gap-2">
               <UsersIcon size="0.8rem" />
@@ -130,7 +134,12 @@ export function FlowMenu() {
             </MenubarSub>
           </MenubarContent>
         </MenubarMenu>
-        <Button onClick={appendNode} variant="ghost" size="sm">
+        <Button
+          onClick={appendNode}
+          variant="ghost"
+          size="sm"
+          className="rounded-sm"
+        >
           <span>New Entity</span>
           <PlusIcon size="0.8rem" />
         </Button>

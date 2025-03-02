@@ -136,7 +136,7 @@ export function JoinEditor() {
       });
 
       // deselect edge
-      setEdges((edges) => deselectEdges("xy-edge__" + editingJoin.id, edges));
+      setEdges((edges) => deselectEdges(editingJoin.id, edges));
 
       setEditingColumn(newColumn); // open column editor with the new foreign key
       setEditingJoin(null);
@@ -175,7 +175,10 @@ export function JoinEditor() {
     });
 
     // remove edge
-    setEdges((edges) => deleteEdges("xy-edge__" + editingJoin.id, edges));
+    setEdges((edges) => deleteEdges(editingJoin.id, edges));
+
+    setEditingColumn(null);
+    setEditingJoin(null);
   }, [currentNode, targetTable, editingJoin, setNodes, setEdges]);
 
   useEffect(() => {
@@ -208,9 +211,7 @@ export function JoinEditor() {
       open
       onOpenChange={(open) => {
         if (!open) {
-          setEdges((edges) =>
-            deselectEdges("xy-edge__" + editingJoin.id, edges),
-          );
+          setEdges((edges) => deselectEdges(editingJoin.id, edges));
           setEditingJoin(null);
         }
       }}
@@ -384,8 +385,8 @@ export function JoinEditor() {
 
             {/* TODO: through */}
 
-            <DialogFooter className="flex gap-4 justify-between">
-              {/* <div className="flex gap-4 justify-between"> */}
+            {/* <DialogFooter className="flex gap-4 justify-between"> */}
+            <div className="flex gap-4 justify-between">
               <Button type="submit">
                 <CheckIcon size="0.8rem" />
                 Save
@@ -398,8 +399,8 @@ export function JoinEditor() {
               >
                 <TrashIcon size="0.8rem" />
               </Button>
-              {/* </div> */}
-            </DialogFooter>
+            </div>
+            {/* </DialogFooter> */}
           </form>
         )}
       </DialogContent>

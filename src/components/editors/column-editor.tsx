@@ -16,8 +16,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { EditorContext } from "@/lib/context/editor-context";
+import { updateNodes } from "@/lib/flow-editors/nodes";
 import type { ColumnProps } from "@/lib/types/database-types";
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
 
 const dataTypes = [
   {
@@ -47,7 +48,7 @@ type ColumnEditorProps = {
 };
 
 export function ColumnEditor({ open = false }: ColumnEditorProps) {
-  const { editingColumn, setEditingColumn, setEditingJoin } =
+  const { editingColumn, setEditingColumn, setEditingJoin, setNodes } =
     useContext(EditorContext);
 
   // TODO: handle `objectId` for mongodb.
@@ -59,6 +60,28 @@ export function ColumnEditor({ open = false }: ColumnEditorProps) {
     [editingColumn?.primaryKey],
   );
 
+  // apply `colum-editor` updates.
+  useEffect(() => {
+    if (!editingColumn) return;
+    setNodes((nds) => {
+      const node = nds.find((_node) => _node.id === editingColumn.table);
+      if (!node) return nds;
+      let columns = [...node.data.columns];
+
+      if (editingColumn.primaryKey) node.data.primaryKey = editingColumn.id;
+
+      columns = columns.map((col) => {
+        if (col.id !== editingColumn.id) {
+          if (editingColumn.primaryKey) return { ...col, primaryKey: false };
+          return col;
+        }
+        return editingColumn;
+      });
+
+      return updateNodes({ id: node.id, columns }, nds);
+    });
+  }, [editingColumn]);
+
   if (!editingColumn) return <></>;
 
   return (
@@ -68,7 +91,7 @@ export function ColumnEditor({ open = false }: ColumnEditorProps) {
         if (!open) setEditingColumn(null);
       }}
     >
-      <SheetContent side="right" className="overflow-y-auto">
+      <SheetContent side="left" className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Column Editor</SheetTitle>
         </SheetHeader>
@@ -199,9 +222,9 @@ export function ColumnEditor({ open = false }: ColumnEditorProps) {
               id="column-nullable"
               checked={!!editingColumn.nullable}
               disabled={
-                editingColumn.primaryKey ||
-                editingColumn.autoIncrement ||
-                editingColumn.unique
+                !!editingColumn.primaryKey ||
+                !!editingColumn.autoIncrement ||
+                !!editingColumn.unique
               }
               onCheckedChange={(checked) =>
                 setEditingColumn({
@@ -226,9 +249,9 @@ export function ColumnEditor({ open = false }: ColumnEditorProps) {
                 })
               }
               disabled={
-                editingColumn.primaryKey ||
-                editingColumn.autoIncrement ||
-                editingColumn.unique
+                !!editingColumn.primaryKey ||
+                !!editingColumn.autoIncrement ||
+                !!editingColumn.unique
               }
             />
           </div>

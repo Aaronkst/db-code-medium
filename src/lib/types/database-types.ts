@@ -50,7 +50,7 @@ export type ColumnProps = {
 };
 
 export type JoinProps = {
-  id: string; // removed "xy-edge__"
+  id: string;
   // target: where to get the foreign key from.
   target: {
     table: string; // table id

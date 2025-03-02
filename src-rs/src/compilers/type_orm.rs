@@ -2,6 +2,7 @@
 mod helpers;
 
 use serde_json::{json, Value};
+use web_sys::js_sys::Math::cos;
 
 /**
 Convert nodes to typeORM syntax.
@@ -243,6 +244,7 @@ pub fn convert_from_typeorm(program: &str) -> String {
             if node_type == "ClassDeclaration".to_string() {
                 // Initialize a default table.
                 let mut table_object = helpers::get_default_table();
+                let table_id = table_object["id"].as_str().unwrap_or("").to_string();
 
                 let table_name = node["id"]["name"].as_str().unwrap_or("").to_string();
                 table_object["data"]["name"] = json!(table_name);
@@ -348,6 +350,7 @@ pub fn convert_from_typeorm(program: &str) -> String {
                     }
 
                     column_object["name"] = attribute["key"]["name"].clone();
+                    column_object["table"] = json!(table_id);
 
                     let data_type = column_object["dataType"].as_str().unwrap_or("");
                     if data_type.len() < 1 {

@@ -6,7 +6,7 @@ import { deleteEdges } from "@/lib/flow-editors/nodes";
 import { TableProps } from "@/lib/types/database-types";
 import { Editor, type Monaco } from "@monaco-editor/react";
 import { parse } from "@typescript-eslint/parser";
-import { addEdge, type Connection, type Node } from "@xyflow/react";
+import { addEdge, MarkerType, type Connection, type Node } from "@xyflow/react";
 import { debounce } from "lodash";
 import { memo, useContext, useMemo, useRef } from "react";
 
@@ -158,10 +158,31 @@ const CodeEditor = memo(
 
               setEdges((eds) => {
                 for (const connection of connections) {
-                  eds = addEdge(connection, eds);
+                  eds = addEdge(
+                    {
+                      id: `${connection.source} -> ${connection.target}`,
+                      type:
+                        connection.source === connection.target
+                          ? "selfconnecting"
+                          : "smoothstep",
+                      source: connection.source,
+                      target: connection.target,
+                      label: `${connection.source} -> ${connection.target}`,
+                      markerEnd: {
+                        type: MarkerType.Arrow,
+                        // color: "#FF0072",
+                      },
+                      style: {
+                        strokeWidth: 2,
+                        // stroke: "#FF0072",
+                      },
+                    },
+                    eds,
+                  );
                 }
                 return eds;
               });
+              console.log(parsedNodes);
               setNodes(parsedNodes);
             }
           } catch (e) {

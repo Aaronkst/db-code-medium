@@ -3,6 +3,7 @@
 import { ColumnEditor, JoinEditor } from "@/components/editors";
 import { CodeEditor } from "@/components/editors/code-editor";
 import { FlowMenu } from "@/components/editors/flow-menu";
+import { SelfConnection } from "@/components/flow-nodes/edges/self-connecting";
 import { TableNode } from "@/components/flow-nodes/table-node";
 import { Button } from "@/components/ui/button";
 import { AppContext } from "@/lib/context/app-context";
@@ -17,12 +18,16 @@ import {
   Background,
   Controls,
   type Edge,
+  MarkerType,
+  MiniMap,
   type Node,
   type OnConnect,
   type OnEdgesChange,
   type OnNodesChange,
+  OnSelectionChangeFunc,
   ReactFlow,
   ReactFlowProvider,
+  useOnSelectionChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cloneDeep, debounce } from "lodash";
@@ -45,6 +50,10 @@ import {
 
 const nodeTypes = {
   table: TableNode,
+};
+
+const edgeTypes = {
+  selfconnecting: SelfConnection,
 };
 
 // Migrate to api lib later
@@ -123,7 +132,7 @@ function App({ project }: AppProps) {
             );
             setTypeORMCode(_typeORMCode);
           } catch (e) {
-            console.log("⚠️ wasm error:", e);
+            console.warn("⚠️ wasm error:", e);
           }
         },
         500,
@@ -142,7 +151,7 @@ function App({ project }: AppProps) {
 
         setWasmModule(wasm);
       } catch (e) {
-        console.log("⚠️ wasm error:", e);
+        console.warn("⚠️ wasm error:", e);
       }
     };
     if (!wasmModule) loadWasm();
@@ -182,43 +191,23 @@ function App({ project }: AppProps) {
 
   // node manipulators
   const onNodesChange: OnNodesChange<Node<TableProps>> = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    (changes) => {
+      compileNodes.current = true;
+      setNodes((nds) => applyNodeChanges(changes, nds));
+    },
     [],
   );
-
-  // apply `colum-editor` updates.
-  useEffect(() => {
-    if (!editingColumn) return;
-
-    setNodes((nds) => {
-      const node = nds.find((_node) => _node.id === editingColumn.table);
-      if (!node) return nds;
-
-      let columns = [...node.data.columns];
-
-      if (editingColumn.primaryKey) node.data.primaryKey = editingColumn.id;
-
-      columns = columns.map((col) => {
-        if (col.id !== editingColumn.id) {
-          if (editingColumn.primaryKey) return { ...col, primaryKey: false };
-          return col;
-        }
-        return editingColumn;
-      });
-
-      return updateNodes({ id: node.id, columns }, nodes);
-    });
-  }, [editingColumn]);
 
   // edge manipulators
   const onEdgesChange: OnEdgesChange<Edge<TableProps>> = useCallback(
     (changes) => {
+      compileNodes.current = true;
       const change = changes[0];
 
       if (change?.type === "select" && change?.selected) {
         let join: JoinProps | null = null;
 
-        const id = (change?.id || "").replace("xy-edge__", "");
+        const id = change?.id || "";
 
         for (const node of nodes) {
           const findJoin = node.data.joins
@@ -280,11 +269,14 @@ function App({ project }: AppProps) {
   );
   const onConnect: OnConnect = useCallback((connection) => {
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
-    const baseEdgeId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
+    const baseEdgeId = `${connection.source} -> ${connection.target}`;
+
+    let sourceNode: Node<TableProps> | null = null;
+    let targetNode: Node<TableProps> | null = null;
 
     setNodes((nds) => {
-      const sourceNode = nds.find((node) => node.id === connection.source);
-      const targetNode = nds.find((node) => node.id === connection.target);
+      sourceNode = nds.find((node) => node.id === connection.source) || null;
+      targetNode = nds.find((node) => node.id === connection.target) || null;
       if (!sourceNode || !targetNode) return nds;
 
       applyEdgeEffects = true;
@@ -338,9 +330,35 @@ function App({ project }: AppProps) {
       );
     });
 
-    if (!applyEdgeEffects) return;
+    if (!applyEdgeEffects || !targetNode || !sourceNode) return;
 
-    setEdges((eds) => addEdge(connection, eds));
+    setEdges((eds) =>
+      addEdge(
+        {
+          id: baseEdgeId,
+          type:
+            connection.source === connection.target
+              ? "selfconnecting"
+              : "smoothstep",
+          source: connection.source,
+          target: connection.target,
+          label:
+            connection.source === connection.target
+              ? "Self Join"
+              : `${sourceNode?.data.name} -> ${targetNode?.data.name}`,
+          markerEnd: {
+            type: MarkerType.Arrow,
+            color: "#FF0072",
+          },
+          style: {
+            strokeWidth: 2,
+            stroke: "#FF0072",
+          },
+          animated: true,
+        },
+        eds,
+      ),
+    );
     setEditingJoin({
       id: baseEdgeId,
       target: {
@@ -356,30 +374,50 @@ function App({ project }: AppProps) {
     });
   }, []);
 
+  const onSelectChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes }) => {
+      const nodeIds = nodes.map((node) => node.id);
+      setEdges((eds) => {
+        return eds.map((edge) => ({
+          ...edge,
+          markerEnd: {
+            type: MarkerType.Arrow,
+            color:
+              nodeIds.includes(edge.source) || nodeIds.includes(edge.target)
+                ? "#FF0072"
+                : undefined,
+          },
+          style: {
+            strokeWidth: 2,
+            stroke:
+              nodeIds.includes(edge.source) || nodeIds.includes(edge.target)
+                ? "#FF0072"
+                : undefined,
+          },
+          animated:
+            nodeIds.includes(edge.source) || nodeIds.includes(edge.target),
+        }));
+      });
+    },
+    [setEdges],
+  );
+
+  useOnSelectionChange({
+    onChange: onSelectChange,
+  });
+
+  useEffect(() => {
+    if (showEditingPane) compileNodes.current = true;
+  }, [showEditingPane]);
+
   if (loading) return "Loading...";
 
   return (
     <>
       <FlowMenu />
+      <ColumnEditor open={showEditingPane} />
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
-        {/* <Panel
-        defaultSize={0}
-        className="bg-neutral-100 dark:bg-neutral-900 duration-500 ease-in-out"
-        ref={editorPanelRef}
-      >
-        <div className="max-h-screen overflow-y-scroll">
-          <ColumnEditor />
-        </div>
-      </Panel> */}
-
-        {/* <PanelResizeHandle disabled></PanelResizeHandle> */}
-
-        <Panel
-          defaultSize={50}
-          className="flex flex-col"
-          ref={nodePanelRef}
-          onMouseDown={() => (compileNodes.current = true)}
-        >
+        <Panel defaultSize={50} className="flex flex-col" ref={nodePanelRef}>
           <ReactFlow
             id="node-canvas"
             nodes={nodes}
@@ -388,11 +426,13 @@ function App({ project }: AppProps) {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             colorMode={colorTheme}
             className="flex-1"
           >
             <Background />
             <Controls />
+            <MiniMap />
           </ReactFlow>
         </Panel>
         <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-900 flex justify-center items-center">
@@ -415,7 +455,6 @@ function App({ project }: AppProps) {
         </Panel>
         <JoinEditor />
       </PanelGroup>
-      <ColumnEditor open={showEditingPane} />
     </>
   );
 }

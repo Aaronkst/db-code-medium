@@ -101,7 +101,7 @@ function TableNodeComponent({
     <div
       className={cn(
         "rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table",
-        selected ? "border-2 border-sky-500 dark:border-sky-900" : "",
+        selected ? "border border-[#FF0072]" : "",
       )}
     >
       {/* <Button
@@ -112,8 +112,8 @@ function TableNodeComponent({
       >
         <Trash size="0.8rem" color="white" />
       </Button> */}
-      <NodeToolbar isVisible={selected} position={Position.Right}>
-        <div className="flex flex-col gap-2">
+      <NodeToolbar isVisible={selected} position={Position.Bottom}>
+        <div className="flex gap-2">
           <Button size="icon" onClick={() => duplicateNode(id)}>
             <Copy size="0.8rem" />
           </Button>
@@ -208,42 +208,26 @@ function TableNodeComponent({
           </div>
         </div>
       </div>
-
       <Handle
         type="source"
         position={Position.Right}
         id={"_source_" + joinTargets.length}
-        style={{ top: 10 }}
         isConnectable
+        style={{
+          width: "10px",
+          height: "10px",
+        }}
       />
-      {joinTargets.map((join, idx) => (
-        <Handle
-          key={"_source_-" + idx}
-          type="source" // target other sources from this node
-          position={Position.Right}
-          id={"_source_" + idx}
-          style={{ top: 20 + idx * 10 }}
-          isConnectable={false}
-        />
-      ))}
-
       <Handle
         type="target"
         position={Position.Left}
         id={"_target_" + joinSources.length}
-        style={{ top: 10 }}
         isConnectable
+        style={{
+          width: "10px",
+          height: "10px",
+        }}
       />
-      {joinSources.map((join, idx) => (
-        <Handle
-          key={"_target_" + idx}
-          type="target" // other source will target this node
-          position={Position.Left}
-          id={"_target_" + idx}
-          style={{ top: 20 + idx * 10 }}
-          isConnectable={false}
-        />
-      ))}
     </div>
   );
 }
