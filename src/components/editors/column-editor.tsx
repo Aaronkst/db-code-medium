@@ -18,7 +18,7 @@ import {
 import { EditorContext } from "@/lib/context/editor-context";
 import { updateNodes } from "@/lib/flow-editors/nodes";
 import type { ColumnProps } from "@/lib/types/database-types";
-import { useContext, useEffect, useMemo } from "react";
+import { memo, useContext, useEffect, useMemo } from "react";
 
 const dataTypes = [
   {
@@ -47,7 +47,7 @@ type ColumnEditorProps = {
   open?: boolean;
 };
 
-export function ColumnEditor({ open = false }: ColumnEditorProps) {
+function ColumnEditorComponent({ open = false }: ColumnEditorProps) {
   const { editingColumn, setEditingColumn, setEditingJoin, setNodes } =
     useContext(EditorContext);
 
@@ -473,3 +473,7 @@ export function ColumnEditor({ open = false }: ColumnEditorProps) {
     </Sheet>
   );
 }
+
+ColumnEditorComponent.displayName = "ColumnEditor";
+
+export const ColumnEditor = memo(ColumnEditorComponent);
