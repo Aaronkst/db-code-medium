@@ -4,7 +4,6 @@ import { createContext, useEffect, useState } from "react";
 
 type colorTheme = "dark" | "light" | "system";
 
-// TODO: add user creds later.
 const AppContext = createContext<{
   colorTheme: colorTheme;
   setColorTheme: (colorTheme: colorTheme) => void;

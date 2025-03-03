@@ -5,11 +5,9 @@ import { CodeEditor } from "@/components/editors/code-editor";
 import { FlowMenu } from "@/components/editors/flow-menu";
 import { SelfConnection } from "@/components/flow-nodes/edges/self-connecting";
 import { TableNode } from "@/components/flow-nodes/table-node";
-import { Button } from "@/components/ui/button";
 import { AppContext } from "@/lib/context/app-context";
 import { EditorContext } from "@/lib/context/editor-context";
-import { getDefaultTable } from "@/lib/flow-editors/helpers";
-import { deleteNodes, updateNodes } from "@/lib/flow-editors/nodes";
+import { updateNodes } from "@/lib/flow-editors/nodes";
 import type { JoinProps, TableProps } from "@/lib/types/database-types";
 import {
   addEdge,
@@ -19,7 +17,6 @@ import {
   Controls,
   type Edge,
   MarkerType,
-  MiniMap,
   type Node,
   type OnConnect,
   type OnEdgesChange,
@@ -31,8 +28,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { cloneDeep, debounce } from "lodash";
-import { EllipsisVertical, FilePlus } from "lucide-react";
-import { nanoid } from "nanoid";
+import { EllipsisVertical } from "lucide-react";
 import {
   useCallback,
   useContext,
@@ -41,12 +37,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  ImperativePanelHandle,
-  Panel,
-  PanelGroup,
-  PanelResizeHandle,
-} from "react-resizable-panels";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 const nodeTypes = {
   table: TableNode,
@@ -78,11 +69,6 @@ function App({ project }: AppProps) {
     useContext(EditorContext);
 
   const { colorTheme } = useContext(AppContext);
-
-  // editing pane controllers
-  const editorPanelRef = useRef<ImperativePanelHandle>(null);
-  const nodePanelRef = useRef<ImperativePanelHandle>(null);
-  const codePanelRef = useRef<ImperativePanelHandle>(null);
 
   // control when to compile codes
   const compileNodes = useRef<boolean>(true);
@@ -417,7 +403,7 @@ function App({ project }: AppProps) {
       <FlowMenu />
       <ColumnEditor open={showEditingPane} />
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
-        <Panel defaultSize={50} className="flex flex-col" ref={nodePanelRef}>
+        <Panel defaultSize={50} className="flex flex-col">
           <ReactFlow
             id="node-canvas"
             nodes={nodes}
@@ -432,7 +418,6 @@ function App({ project }: AppProps) {
           >
             <Background />
             <Controls />
-            <MiniMap />
           </ReactFlow>
         </Panel>
         <PanelResizeHandle className="bg-neutral-100 dark:bg-neutral-900 flex justify-center items-center">
@@ -442,7 +427,6 @@ function App({ project }: AppProps) {
         </PanelResizeHandle>
         <Panel
           defaultSize={50}
-          ref={codePanelRef}
           onMouseDown={() => (compileNodes.current = false)}
         >
           <div className="flex flex-col h-full">

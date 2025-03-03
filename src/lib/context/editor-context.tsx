@@ -20,7 +20,7 @@ import { deleteNodes, updateNodes } from "../flow-editors/nodes";
 import { nanoid } from "nanoid";
 import { getDefaultTable } from "../flow-editors/helpers";
 
-const EditorContext = createContext<{
+type EditorContextProps = {
   // tables and relations
   nodes: Node<TableProps>[];
   setNodes: Dispatch<SetStateAction<Node<TableProps>[]>>;
@@ -36,7 +36,12 @@ const EditorContext = createContext<{
   editNode: (id: string, data: Partial<TableProps>) => void;
   appendNode: () => void;
   duplicateNode: (id: string) => void;
-}>({
+  // databases
+  database: "postgres" | "mongodb" | "mysql" | "";
+  setDatabase: (database: EditorContextProps["database"]) => void;
+};
+
+const EditorContext = createContext<EditorContextProps>({
   nodes: [],
   setNodes: () => {},
   edges: [],
@@ -49,6 +54,8 @@ const EditorContext = createContext<{
   editNode: () => {},
   appendNode: () => {},
   duplicateNode: () => {},
+  database: "",
+  setDatabase: () => {},
 });
 
 const debouncedSetLocalStorage = debounce((key: string, value: string) => {
@@ -59,18 +66,10 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
   const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
   const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
 
-  const [editingColumn, _setEditingColumn] = useState<ColumnProps | null>(null);
-  const [editingJoin, _setEditingJoin] = useState<JoinProps | null>(null);
+  const [editingColumn, setEditingColumn] = useState<ColumnProps | null>(null);
+  const [editingJoin, setEditingJoin] = useState<JoinProps | null>(null);
 
-  // const duplicates = useMemo(() => findDuplicateTableNames(nodes), [nodes]);
-
-  function setEditingColumn(column: ColumnProps | null) {
-    _setEditingColumn(column);
-  }
-
-  function setEditingJoin(join: JoinProps | null) {
-    _setEditingJoin(join);
-  }
+  const [database, setDatabase] = useState<EditorContextProps["database"]>("");
 
   useEffect(() => {
     debouncedSetLocalStorage("nodes", JSON.stringify(nodes));
@@ -156,6 +155,9 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
         editNode,
         appendNode,
         duplicateNode,
+        // databases
+        database,
+        setDatabase,
       }}
     >
       {children}

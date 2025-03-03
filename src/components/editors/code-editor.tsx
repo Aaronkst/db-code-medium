@@ -6,9 +6,10 @@ import { deleteEdges } from "@/lib/flow-editors/nodes";
 import { TableProps } from "@/lib/types/database-types";
 import { Editor, type Monaco } from "@monaco-editor/react";
 import { parse } from "@typescript-eslint/parser";
-import { addEdge, MarkerType, type Connection, type Node } from "@xyflow/react";
+import { addEdge, MarkerType, type Edge, type Node } from "@xyflow/react";
 import { debounce } from "lodash";
 import { memo, useContext, useMemo, useRef } from "react";
+import { toast } from "sonner";
 
 type CodeEditorProps = {
   ormCode: string;
@@ -18,20 +19,11 @@ type CodeEditorProps = {
 
 type ESLintProgram = ReturnType<typeof parse>;
 
-/* <div>[TODO] Language: Typescript, Syntax: TypeORM</div> */
 const CodeEditor = memo(
   ({ ormCode, className, wasmModule }: CodeEditorProps) => {
     const { colorTheme } = useContext(AppContext);
-    const {
-      nodes,
-      setNodes,
-      edges,
-      setEdges,
-      setEditingJoin,
-      editingColumn,
-      editNode,
-      removeNode,
-    } = useContext(EditorContext);
+    const { nodes, setNodes, setEdges, editNode, removeNode } =
+      useContext(EditorContext);
 
     const editorRef = useRef<any>(null);
 
@@ -68,8 +60,14 @@ const CodeEditor = memo(
             });
 
             const data: {
-              data: ESLintProgram;
+              code: number;
+              data?: ESLintProgram;
+              message?: string;
             } = await response.json();
+
+            if (data.code !== 200) {
+              toast.error("Could not validate your code 😬");
+            }
 
             if (data.data) {
               const convertedNodes = wasmModule.convert_from_typeorm(
@@ -82,7 +80,7 @@ const CodeEditor = memo(
 
               const parsedNodesCopy = [...parsedNodes];
 
-              const connections: Connection[] = [];
+              const newEdges: Edge<TableProps>[] = [];
 
               let idx = 1;
               for (const node of parsedNodes) {
@@ -95,10 +93,6 @@ const CodeEditor = memo(
                   ? matchedNode.position
                   : { x: idx * 10, y: idx * 10 };
                 node.type = "table";
-                // @ts-expect-error: TODO: better node types
-                node.data.onChange = editNode;
-                // @ts-expect-error: TODO: better node types
-                node.data.onDelete = removeNode;
 
                 let joinIdx = 0;
                 for (const { target, ...join } of node.data.joins) {
@@ -107,19 +101,33 @@ const CodeEditor = memo(
                       (node) => node.id === target.table,
                     );
                     if (targetTable) {
-                      const connection: Connection = {
+                      const edge: Edge<TableProps> = {
+                        id: `${node.id} -> ${target.table}`,
+                        type:
+                          node.id === target.table
+                            ? "selfconnecting"
+                            : "smoothstep",
                         source: node.id,
                         target: target.table,
-                        sourceHandle: `_source_${joinIdx}`,
-                        targetHandle: `_target_${targetTable.data.joins.length}`,
+                        label:
+                          node.id === target.table
+                            ? "Self Join"
+                            : `${node.data.name} -> ${targetTable.data.name}`,
+                        markerEnd: {
+                          type: MarkerType.Arrow,
+                          color: "#FF0072",
+                        },
+                        style: {
+                          strokeWidth: 2,
+                          stroke: "#FF0072",
+                        },
+                        animated: true,
                       };
 
-                      const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
-
-                      connections.push(connection);
+                      newEdges.push(edge);
                       node.data.joins[joinIdx] = {
                         ...node.data.joins[joinIdx],
-                        id: joinId,
+                        id: edge.id,
                       };
                     }
                   }
@@ -127,23 +135,20 @@ const CodeEditor = memo(
                 }
               }
 
-              for (const connection of connections) {
+              for (const edge of newEdges) {
                 const targetTableIdx = parsedNodes.findIndex(
-                  (node) => node.id === connection.target,
+                  (node) => node.id === edge.target,
                 );
                 const sourceNode = parsedNodes.find(
-                  (node) => node.id === connection.source,
+                  (node) => node.id === edge.source,
                 );
                 if (targetTableIdx > -1 && sourceNode) {
-                  const joinId = `${connection.source}${connection.sourceHandle}-${connection.target}${connection.targetHandle}`;
-
                   const join = sourceNode.data.joins.find(
-                    (join) => join.id === joinId,
+                    (join) => join.id === edge.id,
                   );
-
                   if (join) {
                     parsedNodes[targetTableIdx].data.joins.push({
-                      id: joinId,
+                      id: edge.id,
                       target: null,
                       onDelete: join.onDelete,
                       onUpdate: join.onUpdate,
@@ -157,32 +162,11 @@ const CodeEditor = memo(
               }
 
               setEdges((eds) => {
-                for (const connection of connections) {
-                  eds = addEdge(
-                    {
-                      id: `${connection.source} -> ${connection.target}`,
-                      type:
-                        connection.source === connection.target
-                          ? "selfconnecting"
-                          : "smoothstep",
-                      source: connection.source,
-                      target: connection.target,
-                      label: `${connection.source} -> ${connection.target}`,
-                      markerEnd: {
-                        type: MarkerType.Arrow,
-                        // color: "#FF0072",
-                      },
-                      style: {
-                        strokeWidth: 2,
-                        // stroke: "#FF0072",
-                      },
-                    },
-                    eds,
-                  );
+                for (const edge of newEdges) {
+                  eds = addEdge(edge, eds);
                 }
                 return eds;
               });
-              console.log(parsedNodes);
               setNodes(parsedNodes);
             }
           } catch (e) {

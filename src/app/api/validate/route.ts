@@ -2,7 +2,6 @@ import { TableProps } from "@/lib/types/database-types";
 import { parse } from "@typescript-eslint/parser";
 import { Node } from "@xyflow/react";
 
-// TODO: return error if the parsed program contains errors.
 export async function POST(request: Request) {
   try {
     const { code } = await request.json();
@@ -15,18 +14,46 @@ export async function POST(request: Request) {
       range: true, // Include range information
       loc: true, // Include location information
       tokens: true, // Include tokens
-      // You can add more options here as needed
     });
 
-    console.log("parsed code:", JSON.stringify(parsed));
+    for (const node of parsed.body) {
+      const attributes: string[] = [];
+      if (node.type === "ClassDeclaration") {
+        for (const attribute of node.body.body) {
+          if (
+            attribute.type === "PropertyDefinition" &&
+            attribute.key.type === "Identifier"
+          ) {
+            if (attributes.includes(attribute.key.name)) {
+              return new Response(
+                JSON.stringify({
+                  code: 406,
+                  message: "Duplicate.",
+                }),
+                { status: 406 },
+              );
+            }
+            attributes.push(attribute.key.name);
+          }
+        }
+      }
+    }
 
     return new Response(
       JSON.stringify({
+        code: 200,
         data: parsed,
       }),
       { status: 200 },
     );
   } catch (err) {
-    return new Response("Cannot validate", { status: 406 });
+    console.log(err);
+    return new Response(
+      JSON.stringify({
+        code: 406,
+        message: "Cannot validate.",
+      }),
+      { status: 406 },
+    );
   }
 }

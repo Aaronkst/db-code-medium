@@ -24,7 +24,7 @@ export function deleteNodes(ids: string | string[], nodes: Node<TableProps>[]) {
   );
 }
 
-type UpdateNodesPayload = { id: string } & Partial<TableProps>;
+export type UpdateNodesPayload = { id: string } & Partial<TableProps>;
 
 /**
  * Updates nodes and table data from the flow.

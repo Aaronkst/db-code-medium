@@ -22,7 +22,6 @@ type ImageExportDialogProps = {
   onClose: () => void;
 };
 
-// TODO: allow for custom resolutions
 const imageWidth = 1024;
 const imageHeight = 768;
 

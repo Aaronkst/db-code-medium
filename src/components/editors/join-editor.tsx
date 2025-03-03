@@ -5,6 +5,7 @@ import {
   deleteEdges,
   deselectEdges,
   updateNodes,
+  UpdateNodesPayload,
 } from "@/lib/flow-editors/nodes";
 import type {
   ColumnProps,
@@ -95,50 +96,60 @@ export function JoinEditor() {
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
-      // TODO: replace column if existing.
+      const sourceColumn = currentNode.data.columns.find(
+        (col) => col.foreignKey?.id === editingJoin.id,
+      );
 
-      const newColumn = getDefaultColumn(currentNode.data, {
-        name: targetTable.data.name?.toLowerCase() || targetTable.data.id,
-        dbName:
-          (targetTable.data.name?.toLowerCase() || targetTable.data.id) + "_id",
-        dataType: targetCol.dataType,
-        length: targetCol.length,
-        precision: targetCol.precision,
-        scale: targetCol.scale,
-        collation: targetCol.collation,
-        foreignKey: editingJoin,
-      });
-
-      // apply join updates
-      setNodes((nds) => {
+      if (sourceColumn) {
+        const columns = currentNode.data.columns.map((col) => {
+          if (col.id !== sourceColumn.id) return col;
+          return {
+            ...sourceColumn,
+            foreignKey: editingJoin,
+          };
+        });
+        const payload: UpdateNodesPayload[] = [
+          {
+            id: currentNode.id,
+            joins: sourceJoins,
+            columns: columns,
+          },
+        ];
         if (currentNode.id === targetTable.id) {
-          // self join.
-          return updateNodes(
-            {
-              id: currentNode.id,
-              joins: sourceJoins,
-              columns: [...currentNode.data.columns, newColumn],
-            },
-            nds,
-          );
+          payload.push({ id: targetTable.id, joins: targetJoins });
         }
-        return updateNodes(
-          [
-            {
-              id: currentNode.id,
-              joins: sourceJoins,
-              columns: [...currentNode.data.columns, newColumn],
-            },
-            { id: targetTable.id, joins: targetJoins },
-          ],
-          nds,
-        );
-      });
+        // apply join updates
+        setNodes((nds) => updateNodes(payload, nds));
+      } else {
+        const newColumn = getDefaultColumn(currentNode.data, {
+          name: targetTable.data.name?.toLowerCase() || targetTable.data.id,
+          dbName:
+            (targetTable.data.name?.toLowerCase() || targetTable.data.id) +
+            "_id",
+          dataType: targetCol.dataType,
+          length: targetCol.length,
+          precision: targetCol.precision,
+          scale: targetCol.scale,
+          collation: targetCol.collation,
+          foreignKey: editingJoin,
+        });
+        const payload: UpdateNodesPayload[] = [
+          {
+            id: currentNode.id,
+            joins: sourceJoins,
+            columns: [...currentNode.data.columns, newColumn],
+          },
+        ];
+        if (currentNode.id === targetTable.id) {
+          payload.push({ id: targetTable.id, joins: targetJoins });
+        }
+        // apply join updates
+        setNodes((nds) => updateNodes(payload, nds));
+        setEditingColumn(newColumn); // open column editor with the new foreign key
+      }
 
       // deselect edge
       setEdges((edges) => deselectEdges(editingJoin.id, edges));
-
-      setEditingColumn(newColumn); // open column editor with the new foreign key
       setEditingJoin(null);
     },
     [currentNode, targetTable, editingJoin, setNodes, setEdges],
@@ -385,11 +396,11 @@ export function JoinEditor() {
 
             {/* TODO: through */}
 
-            {/* <DialogFooter className="flex gap-4 justify-between"> */}
-            <div className="flex gap-4 justify-between">
+            <DialogFooter className="flex gap-4">
+              {/* <div className="flex gap-4 justify-between"> */}
               <Button type="submit">
                 <CheckIcon size="0.8rem" />
-                Save
+                <span>Save</span>
               </Button>
               <Button
                 size="icon"
@@ -399,8 +410,8 @@ export function JoinEditor() {
               >
                 <TrashIcon size="0.8rem" />
               </Button>
-            </div>
-            {/* </DialogFooter> */}
+              {/* </div> */}
+            </DialogFooter>
           </form>
         )}
       </DialogContent>
