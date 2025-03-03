@@ -88,16 +88,13 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
 
             const newEdges: Edge<TableProps>[] = [];
 
-            let idx = 1;
+            let idx = 0;
             for (const node of parsedNodes) {
-              const matchedNode = nodes.find(
-                (originalNode) => originalNode.data.name === node.data.name,
-              );
-
+              const matchedNode = nodes[idx];
               /* Find and use original position if available. */
               node.position = matchedNode
                 ? matchedNode.position
-                : { x: idx * 10, y: idx * 10 };
+                : { x: (idx + 1) * 10, y: (idx + 1) * 10 };
               node.type = "table";
 
               let joinIdx = 0;
@@ -138,6 +135,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                   }
                 }
                 joinIdx++;
+                idx++;
               }
             }
 
