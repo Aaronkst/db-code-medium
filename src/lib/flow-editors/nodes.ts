@@ -1,4 +1,4 @@
-import type { TableProps } from "@/lib/types/database-types";
+import type { JoinProps, TableProps } from "@/lib/types/database-types";
 import {
   applyNodeChanges,
   type NodeChange,
@@ -59,7 +59,7 @@ export function updateNodes(
  * @param edges
  * @returns
  */
-export function deleteEdges(ids: string | string[], edges: Edge<TableProps>[]) {
+export function deleteEdges(ids: string | string[], edges: Edge<JoinProps>[]) {
   if (!Array.isArray(ids)) ids = [ids];
   return applyEdgeChanges(
     ids.map((id) => ({
@@ -78,7 +78,7 @@ export function deleteEdges(ids: string | string[], edges: Edge<TableProps>[]) {
  */
 export function deselectEdges(
   ids: string | string[],
-  edges: Edge<TableProps>[],
+  edges: Edge<JoinProps>[],
 ) {
   if (!Array.isArray(ids)) ids = [ids];
   return applyEdgeChanges(

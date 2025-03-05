@@ -24,6 +24,11 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { memo, useCallback, useContext } from "react";
+import {
+  MarkerManyEnd,
+  MarkerManyStart,
+  MarkerOne,
+} from "../flow-nodes/edges/arrow-heads";
 
 const nodeTypes = {
   table: TableNode,
@@ -44,11 +49,11 @@ function FlowEditorComponent() {
     (changes) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    [],
+    []
   );
 
   // edge manipulators
-  const onEdgesChange: OnEdgesChange<Edge<TableProps>> = useCallback(
+  const onEdgesChange: OnEdgesChange<Edge<JoinProps>> = useCallback(
     (changes) => {
       const change = changes[0];
 
@@ -77,18 +82,18 @@ function FlowEditorComponent() {
         const targetNodeId = splitId[0].split("_source")[1];
 
         const currentNode = nodes.find(
-          (node) => node.data.id === currentNodeId,
+          (node) => node.data.id === currentNodeId
         );
         const targetTable = nodes.find((node) => node.data.id === targetNodeId);
 
         if (!currentNode || !targetTable) return;
 
         const sourceJoinIdx = currentNode.data.joins.findIndex(
-          (join) => join.id === joinId,
+          (join) => join.id === joinId
         );
 
         const targetJoinIdx = targetTable.data.joins.findIndex(
-          (join) => join.id === joinId,
+          (join) => join.id === joinId
         );
 
         if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
@@ -106,14 +111,14 @@ function FlowEditorComponent() {
               { id: currentNode.id, joins: sourceJoins },
               { id: targetTable.id, joins: targetJoins },
             ],
-            nds,
+            nds
           );
         });
       }
 
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
-    [nodes],
+    [nodes]
   );
   const onConnect: OnConnect = useCallback((connection) => {
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
@@ -150,7 +155,7 @@ function FlowEditorComponent() {
         newJoin.source === sourceNode.id;
         return updateNodes(
           { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
-          nds,
+          nds
         );
       }
       // other join.
@@ -174,7 +179,7 @@ function FlowEditorComponent() {
             ],
           },
         ],
-        nds,
+        nds
       );
     });
 
@@ -204,8 +209,8 @@ function FlowEditorComponent() {
           },
           animated: true,
         },
-        eds,
-      ),
+        eds
+      )
     );
     setEditingJoin({
       id: baseEdgeId,
@@ -229,13 +234,6 @@ function FlowEditorComponent() {
       setEdges((eds) => {
         return eds.map((edge) => ({
           ...edge,
-          markerEnd: {
-            type: MarkerType.Arrow,
-            color:
-              nodeIds.includes(edge.source) || nodeIds.includes(edge.target)
-                ? "#FF0072"
-                : undefined,
-          },
           style: {
             strokeWidth: 2,
             stroke:
@@ -248,7 +246,7 @@ function FlowEditorComponent() {
         }));
       });
     },
-    [setEdges],
+    [setEdges]
   );
 
   useOnSelectionChange({
@@ -256,21 +254,26 @@ function FlowEditorComponent() {
   });
 
   return (
-    <ReactFlow
-      id="node-canvas"
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      colorMode={colorTheme}
-      className="flex-1"
-    >
-      <Background />
-      <Controls />
-    </ReactFlow>
+    <>
+      <MarkerOne />
+      <MarkerManyStart />
+      <MarkerManyEnd />
+      <ReactFlow
+        id="node-canvas"
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        colorMode={colorTheme}
+        className="flex-1"
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
+    </>
   );
 }
 

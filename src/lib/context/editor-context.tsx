@@ -24,8 +24,8 @@ type EditorContextProps = {
   // tables and relations
   nodes: Node<TableProps>[];
   setNodes: Dispatch<SetStateAction<Node<TableProps>[]>>;
-  edges: Edge<TableProps>[];
-  setEdges: Dispatch<SetStateAction<Edge<TableProps>[]>>;
+  edges: Edge<JoinProps>[];
+  setEdges: Dispatch<SetStateAction<Edge<JoinProps>[]>>;
   // editing panes
   editingColumn: ColumnProps | null;
   setEditingColumn: (column: ColumnProps | null) => void;
@@ -64,7 +64,7 @@ const debouncedSetLocalStorage = debounce((key: string, value: string) => {
 
 const EditorProvider = ({ children }: { children: React.ReactNode }) => {
   const [nodes, setNodes] = useState<Node<TableProps>[]>([]);
-  const [edges, setEdges] = useState<Edge<TableProps>[]>([]);
+  const [edges, setEdges] = useState<Edge<JoinProps>[]>([]);
 
   const [editingColumn, setEditingColumn] = useState<ColumnProps | null>(null);
   const [editingJoin, setEditingJoin] = useState<JoinProps | null>(null);
@@ -104,7 +104,7 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
           id: node.id,
           selected: node.id === nodeId,
         })),
-        nodes,
+        nodes
       );
     });
   }
@@ -131,7 +131,7 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
           id: node.id,
           selected: node.id === nodeId,
         })),
-        nodes,
+        nodes
       );
     });
   }

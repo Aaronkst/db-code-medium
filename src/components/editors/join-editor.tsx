@@ -12,7 +12,7 @@ import type {
   JoinProps,
   TableProps,
 } from "@/lib/types/database-types";
-import type { Node } from "@xyflow/react";
+import { type Node, applyEdgeChanges } from "@xyflow/react";
 import { cloneDeep } from "lodash";
 import { CheckIcon, TrashIcon } from "lucide-react";
 import {
@@ -55,7 +55,7 @@ export function JoinEditor() {
     if (!nodes.length || !editingJoin) return;
 
     const targetNode = nodes.find(
-      (node) => node.id === editingJoin.target?.table,
+      (node) => node.id === editingJoin.target?.table
     );
 
     return targetNode;
@@ -93,11 +93,11 @@ export function JoinEditor() {
       });
 
       const targetCol = targetTable.data.columns.find(
-        (col) => col.id === editingJoin.target?.column,
+        (col) => col.id === editingJoin.target?.column
       ) as ColumnProps;
 
       const sourceColumn = currentNode.data.columns.find(
-        (col) => col.foreignKey?.id === editingJoin.id,
+        (col) => col.foreignKey?.id === editingJoin.id
       );
 
       if (sourceColumn) {
@@ -149,21 +149,47 @@ export function JoinEditor() {
       }
 
       // deselect edge
-      setEdges((edges) => deselectEdges(editingJoin.id, edges));
+      setEdges((edges) => {
+        edges = deselectEdges(editingJoin.id, edges);
+        const origEdge = edges.find(({ id }) => id === editingJoin.id);
+        if (origEdge) {
+          edges = applyEdgeChanges(
+            [
+              {
+                id: editingJoin.id,
+                type: "replace",
+                item: {
+                  ...origEdge,
+                  markerStart: editingJoin.type.startsWith("many")
+                    ? "marker-many-start"
+                    : "marker-one",
+                  markerEnd: editingJoin.type.endsWith("many")
+                    ? "marker-many-end"
+                    : "marker-one",
+                  data: editingJoin!,
+                },
+              },
+            ],
+            edges
+          );
+        }
+
+        return edges;
+      });
       setEditingJoin(null);
     },
-    [currentNode, targetTable, editingJoin, setNodes, setEdges],
+    [currentNode, targetTable, editingJoin, setNodes, setEdges]
   );
 
   const removeEdge = useCallback(() => {
     if (!currentNode || !targetTable || !editingJoin) return;
 
     const sourceJoinIdx = currentNode.data.joins.findIndex(
-      (join) => join.id === editingJoin.id,
+      (join) => join.id === editingJoin.id
     );
 
     const targetJoinIdx = targetTable.data.joins.findIndex(
-      (join) => join.id === editingJoin.id,
+      (join) => join.id === editingJoin.id
     );
 
     if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
@@ -181,7 +207,7 @@ export function JoinEditor() {
           { id: currentNode.id, joins: sourceJoins },
           { id: targetTable.id, joins: targetJoins },
         ],
-        nds,
+        nds
       );
     });
 
@@ -204,7 +230,7 @@ export function JoinEditor() {
       const join = node.data.joins.find(
         (join) =>
           join.id === editingJoin.id &&
-          (!join.source || join.source === node.id), // no source or self join only.
+          (!join.source || join.source === node.id) // no source or self join only.
       );
       if (join) {
         editIdx = i;

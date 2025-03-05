@@ -3,10 +3,10 @@
 import { AppContext } from "@/lib/context/app-context";
 import { EditorContext } from "@/lib/context/editor-context";
 import { deleteEdges } from "@/lib/flow-editors/nodes";
-import { TableProps } from "@/lib/types/database-types";
+import { JoinProps, TableProps } from "@/lib/types/database-types";
 import { Editor, type Monaco } from "@monaco-editor/react";
 import { parse } from "@typescript-eslint/parser";
-import { addEdge, MarkerType, type Edge, type Node } from "@xyflow/react";
+import { addEdge, type Edge, type Node } from "@xyflow/react";
 import { cloneDeep, debounce } from "lodash";
 import {
   memo,
@@ -53,7 +53,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           setEdges((eds) => {
             eds = deleteEdges(
               eds.map((edge) => edge.id),
-              eds,
+              eds
             );
             return eds;
           });
@@ -77,16 +77,16 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
 
           if (data.data) {
             const convertedNodes = wasmModule.convert_from_typeorm(
-              JSON.stringify(data.data),
+              JSON.stringify(data.data)
             );
 
             const parsedNodes = JSON.parse(
-              convertedNodes,
+              convertedNodes
             ) as Node<TableProps>[];
 
             const parsedNodesCopy = [...parsedNodes];
 
-            const newEdges: Edge<TableProps>[] = [];
+            const newEdges: Edge<JoinProps>[] = [];
 
             let idx = 0;
             for (const node of parsedNodes) {
@@ -101,10 +101,10 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
               for (const { target, ...join } of node.data.joins) {
                 if (target) {
                   const targetTable = parsedNodesCopy.find(
-                    (node) => node.id === target.table,
+                    (node) => node.id === target.table
                   );
                   if (targetTable) {
-                    const edge: Edge<TableProps> = {
+                    const edge: Edge<JoinProps> = {
                       id: `${node.id} -> ${target.table}`,
                       type:
                         node.id === target.table
@@ -116,15 +116,18 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                         node.id === target.table
                           ? "Self Join"
                           : `${node.data.name} -> ${targetTable.data.name}`,
-                      markerEnd: {
-                        type: MarkerType.Arrow,
-                        color: "#FF0072",
-                      },
+                      markerStart: join.type.startsWith("many")
+                        ? "marker-many-start"
+                        : "marker-one",
+                      markerEnd: join.type.endsWith("many")
+                        ? "marker-many-end"
+                        : "marker-one",
                       style: {
                         strokeWidth: 2,
                         stroke: "#FF0072",
                       },
                       animated: true,
+                      data: node.data.joins[joinIdx],
                     };
 
                     newEdges.push(edge);
@@ -141,14 +144,14 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
 
             for (const edge of newEdges) {
               const targetTableIdx = parsedNodes.findIndex(
-                (node) => node.id === edge.target,
+                (node) => node.id === edge.target
               );
               const sourceNode = parsedNodes.find(
-                (node) => node.id === edge.source,
+                (node) => node.id === edge.source
               );
               if (targetTableIdx > -1 && sourceNode) {
                 const join = sourceNode.data.joins.find(
-                  (join) => join.id === edge.id,
+                  (join) => join.id === edge.id
                 );
                 if (join) {
                   parsedNodes[targetTableIdx].data.joins.push({
@@ -177,7 +180,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           console.log("⚠️ wasm error:", e);
         }
       }, 500),
-    [wasmModule, editNode, removeNode],
+    [wasmModule, editNode, removeNode]
   );
 
   const handleCodeChanges = useCallback(
@@ -185,7 +188,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
       if (!code) return;
       debouncedCompileFromORM(code, nodes);
     },
-    [nodes],
+    [nodes]
   );
 
   const debouncedCompileToORM = useMemo(
@@ -199,11 +202,11 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
             const columns = node.data.columns.map((col) => {
               if (!col.foreignKey?.target) return col;
               const targetTable = nodes.find(
-                (target) => target.id === col.foreignKey?.target?.table,
+                (target) => target.id === col.foreignKey?.target?.table
               );
               if (!targetTable) return col;
               const targetColumn = targetTable.data.columns.find(
-                (target) => target.id === col.foreignKey?.target?.column,
+                (target) => target.id === col.foreignKey?.target?.column
               );
               if (!targetColumn) return col;
               return {
@@ -226,7 +229,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           console.warn("⚠️ wasm error:", e);
         }
       }, 500),
-    [wasmModule],
+    [wasmModule]
   );
 
   useEffect(() => {

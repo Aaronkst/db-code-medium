@@ -1,4 +1,4 @@
-import type { ColumnProps, TableProps } from "@/lib/types/database-types";
+import type { ColumnProps, JoinProps, TableProps } from "@/lib/types/database-types";
 import type { Edge, Node } from "@xyflow/react";
 import { nanoid } from "nanoid";
 
@@ -77,7 +77,7 @@ export const getDefaultTable = (id: string, name: string): TableProps => {
  */
 export const importJson = async (
   file: File,
-  onParse: (nodes: Node<TableProps>[], edges: Edge<TableProps>[]) => void,
+  onParse: (nodes: Node<TableProps>[], edges: Edge<JoinProps>[]) => void,
 ) => {
   const payload = JSON.parse(await file.text());
   if (!payload.nodes && !payload.edges) throw new Error("Invalid format.");

@@ -5,7 +5,7 @@ import { CodeEditor } from "@/components/editors/code-editor";
 import { FlowEditor } from "@/components/editors/flow-editor";
 import { FlowMenu } from "@/components/editors/flow-menu";
 import { EditorContext } from "@/lib/context/editor-context";
-import type { TableProps } from "@/lib/types/database-types";
+import type { JoinProps, TableProps } from "@/lib/types/database-types";
 import { type Edge, type Node, ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { EllipsisVertical } from "lucide-react";
@@ -16,7 +16,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 export type ProjectT = {
   dbType: string;
   nodes: Node<TableProps>[];
-  edges: Edge<TableProps>[];
+  edges: Edge<JoinProps>[];
 };
 
 type AppProps = {
@@ -58,7 +58,7 @@ function App({ project }: AppProps) {
   useEffect(() => {
     if (!initialized) {
       let nodes: Node<TableProps>[] = [];
-      let edges: Edge<TableProps>[] = [];
+      let edges: Edge<JoinProps>[] = [];
       if (!project) {
         //... fetch local storage
         const localNodes = localStorage.getItem("nodes");
