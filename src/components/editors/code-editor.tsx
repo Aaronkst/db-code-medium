@@ -113,9 +113,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                       source: node.id,
                       target: target.table,
                       label:
-                        node.id === target.table
-                          ? "Self Join"
-                          : `${node.data.name} -> ${targetTable.data.name}`,
+                        node.id === target.table ? "Self Join" : join.through,
                       markerStart: join.type.startsWith("many")
                         ? "marker-many-start"
                         : "marker-one",

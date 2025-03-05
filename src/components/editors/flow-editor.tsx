@@ -195,10 +195,7 @@ function FlowEditorComponent() {
               : "smoothstep",
           source: connection.source,
           target: connection.target,
-          label:
-            connection.source === connection.target
-              ? "Self Join"
-              : `${sourceNode?.data.name} -> ${targetNode?.data.name}`,
+          label: connection.source === connection.target ? "Self Join" : "",
           markerEnd: {
             type: MarkerType.Arrow,
             color: "#FF0072",
