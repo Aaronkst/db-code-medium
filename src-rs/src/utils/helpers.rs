@@ -216,14 +216,21 @@ pub fn join_table_options_extractor(mut column_object: Value, arguments: &Vec<Va
                 if let Some(key_name) = option["key"].get("name").unwrap().as_str() {
                     let key = trim_quotes(key_name);
 
-                    let mut value = option["value"]["value"].to_string();
-                    value = trim_quotes(&value).to_string();
-
                     match key {
-                        "name" => column_object["foreignKey"]["through"] = json!(value),
-                        // TODO: research how to handle
-                        "joinColumn" => {}
-                        "inverseJoinColumn" => {}
+                        "name" => {
+                            let value = option["value"]["value"].as_str().unwrap_or("");
+                            column_object["foreignKey"]["through"] = json!(value);
+                        }
+                        "joinColumn" => {
+                            if let Some(value) = option["value"].get("value").unwrap().as_object() {
+                                column_object["foreignKey"]["joinColumn"] = json!(value);
+                            }
+                        }
+                        "inverseJoinColumn" => {
+                            if let Some(value) = option["value"].get("value").unwrap().as_object() {
+                                column_object["foreignKey"]["inverseColumn"] = json!(value);
+                            }
+                        }
                         _ => {} // do nothing
                     }
                 }

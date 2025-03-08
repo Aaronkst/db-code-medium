@@ -2,7 +2,6 @@
 mod helpers;
 
 use serde_json::{json, Value};
-use web_sys::js_sys::Math::cos;
 
 /**
 Convert nodes to typeORM syntax.
@@ -14,9 +13,11 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
             let table_name = data["data"]["name"].as_str().unwrap_or("Entity");
             let mut entity_code = format!("@Entity()\nexport class {} {{\n", table_name);
 
+            let mut column_codes: Vec<String> = Vec::new();
+
             if let Some(columns) = data["data"]["columns"].as_array() {
                 for column in columns {
-                    let column_name = column["name"].as_str().unwrap_or("").to_string();
+                    let column_name = column["name"].as_str().unwrap_or("").to_string(); // TODO: use db_name if not available.
                     let db_name = column["dbName"].as_str().unwrap_or("").to_string();
                     let data_type = column["dataType"].as_str().unwrap_or("string");
                     let is_primary = column["primaryKey"].as_bool().unwrap_or(false);
@@ -92,6 +93,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                                 ));
 
                             // Join column
+                            // TODO: refer to https://orkhan.gitbook.io/typeorm/docs/relations#jointable-options
                             column_decorator.push_str(&format!(
                                 "    @JoinColumn({{ name: \"{}\", referencedColumnName: \"{}\" }})",
                                 db_name, target_column
@@ -107,12 +109,20 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                                     on_delete,
                                     on_update
                                 ));
-                            column_decorator.push_str(&format!(
-                                    "    @JoinTable({{ name: \"{}_{}\", referencedColumnName: \"{}\" }})",
+
+                            let through = fk["through"]
+                                .as_str()
+                                .unwrap_or(&format!(
+                                    "{}_{}",
                                     table_name.to_lowercase(),
-                                    target_table.to_lowercase(),
-                                    target_column
-                                ));
+                                    target_table.to_lowercase()
+                                ))
+                                .to_string();
+
+                            column_decorator.push_str(&format!(
+                                "    @JoinTable({{ name: \"{}\", referencedColumnName: \"{}\" }})",
+                                through, target_column
+                            ));
                         }
                         if is_index {
                             column_decorator.push_str("\n    @Index()");
@@ -208,13 +218,15 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 
                         column_decorator.push_str(" })");
                         // Generate the column definition
-                        entity_code.push_str(&format!(
-                            "    {}\n    {}: {};\n\n",
+                        column_codes.push(format!(
+                            "    {}\n    {}: {};",
                             column_decorator, column_name, ts_data_type
                         ));
                     }
                 }
-                // Close the entity definition
+                let joined_column_codes = column_codes.join("\n\n");
+
+                entity_code.push_str(&format!("{}\n", joined_column_codes));
                 entity_code.push('}');
             }
             entity_codes.push(entity_code)
@@ -280,9 +292,11 @@ pub fn convert_from_typeorm(program: &str) -> String {
                                 if arguments.len() > 0 {
                                     let argument_type =
                                         arguments[0]["type"].as_str().unwrap_or("").to_string();
+
                                     if argument_type == "Literal" {
-                                        column_object["dataType"] =
-                                            json!(arguments[0]["value"].as_str().unwrap_or(""));
+                                        let data_type =
+                                            arguments[0]["value"].as_str().unwrap_or("");
+                                        column_object["dataType"] = json!(data_type);
                                     }
                                 } else {
                                     println!("no arguments for primary key.")
@@ -353,9 +367,8 @@ pub fn convert_from_typeorm(program: &str) -> String {
                     column_object["table"] = json!(table_id);
 
                     let data_type = column_object["dataType"].as_str().unwrap_or("");
+                    print!("data_type.len(): {}\n", data_type.len());
                     if data_type.len() < 1 {
-                        column_object["dataType"] = json!(helpers::ts_type_extractor(attribute));
-                    } else {
                         column_object["dataType"] = json!(helpers::ts_type_extractor(attribute));
                     }
 

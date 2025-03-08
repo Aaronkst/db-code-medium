@@ -49,7 +49,7 @@ function FlowEditorComponent() {
     (changes) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
     },
-    []
+    [],
   );
 
   // edge manipulators
@@ -82,18 +82,18 @@ function FlowEditorComponent() {
         const targetNodeId = splitId[0].split("_source")[1];
 
         const currentNode = nodes.find(
-          (node) => node.data.id === currentNodeId
+          (node) => node.data.id === currentNodeId,
         );
         const targetTable = nodes.find((node) => node.data.id === targetNodeId);
 
         if (!currentNode || !targetTable) return;
 
         const sourceJoinIdx = currentNode.data.joins.findIndex(
-          (join) => join.id === joinId
+          (join) => join.id === joinId,
         );
 
         const targetJoinIdx = targetTable.data.joins.findIndex(
-          (join) => join.id === joinId
+          (join) => join.id === joinId,
         );
 
         if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
@@ -111,14 +111,14 @@ function FlowEditorComponent() {
               { id: currentNode.id, joins: sourceJoins },
               { id: targetTable.id, joins: targetJoins },
             ],
-            nds
+            nds,
           );
         });
       }
 
       setEdges((eds) => applyEdgeChanges(changes, eds));
     },
-    [nodes]
+    [nodes],
   );
   const onConnect: OnConnect = useCallback((connection) => {
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
@@ -147,6 +147,7 @@ function FlowEditorComponent() {
         onUpdate: "CASCADE",
         through: null,
         type: "one-to-one",
+        joinColumn: null,
         inverseColumn: null,
       };
 
@@ -155,7 +156,7 @@ function FlowEditorComponent() {
         newJoin.source === sourceNode.id;
         return updateNodes(
           { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
-          nds
+          nds,
         );
       }
       // other join.
@@ -174,12 +175,13 @@ function FlowEditorComponent() {
                 onUpdate: "CASCADE",
                 through: null,
                 type: "one-to-one",
+                joinColumn: null,
                 inverseColumn: null,
               },
             ],
           },
         ],
-        nds
+        nds,
       );
     });
 
@@ -206,8 +208,8 @@ function FlowEditorComponent() {
           },
           animated: true,
         },
-        eds
-      )
+        eds,
+      ),
     );
     setEditingJoin({
       id: baseEdgeId,
@@ -220,6 +222,7 @@ function FlowEditorComponent() {
       onUpdate: "CASCADE",
       through: null,
       type: "one-to-one",
+      joinColumn: null,
       inverseColumn: null,
     });
   }, []);
@@ -243,7 +246,7 @@ function FlowEditorComponent() {
         }));
       });
     },
-    [setEdges]
+    [setEdges],
   );
 
   useOnSelectionChange({

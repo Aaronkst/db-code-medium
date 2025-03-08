@@ -17,7 +17,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { toast } from "sonner";
 
 type CodeEditorProps = {
   className?: string;
@@ -53,7 +52,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           setEdges((eds) => {
             eds = deleteEdges(
               eds.map((edge) => edge.id),
-              eds
+              eds,
             );
             return eds;
           });
@@ -72,16 +71,17 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           } = await response.json();
 
           if (data.code !== 200) {
-            toast.error("Could not validate your code 😬");
+            // commented due to annoying UX while typing.
+            // toast.error("Could not validate your code 😬");
           }
 
           if (data.data) {
             const convertedNodes = wasmModule.convert_from_typeorm(
-              JSON.stringify(data.data)
+              JSON.stringify(data.data),
             );
 
             const parsedNodes = JSON.parse(
-              convertedNodes
+              convertedNodes,
             ) as Node<TableProps>[];
 
             const parsedNodesCopy = [...parsedNodes];
@@ -101,7 +101,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
               for (const { target, ...join } of node.data.joins) {
                 if (target) {
                   const targetTable = parsedNodesCopy.find(
-                    (node) => node.id === target.table
+                    (node) => node.id === target.table,
                   );
                   if (targetTable) {
                     const edge: Edge<JoinProps> = {
@@ -140,16 +140,17 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
               }
             }
 
+            // TODO: join table for many-to-many options.
             for (const edge of newEdges) {
               const targetTableIdx = parsedNodes.findIndex(
-                (node) => node.id === edge.target
+                (node) => node.id === edge.target,
               );
               const sourceNode = parsedNodes.find(
-                (node) => node.id === edge.source
+                (node) => node.id === edge.source,
               );
               if (targetTableIdx > -1 && sourceNode) {
                 const join = sourceNode.data.joins.find(
-                  (join) => join.id === edge.id
+                  (join) => join.id === edge.id,
                 );
                 if (join) {
                   parsedNodes[targetTableIdx].data.joins.push({
@@ -159,6 +160,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                     onUpdate: join.onUpdate,
                     through: join.through,
                     source: sourceNode.id,
+                    joinColumn: null,
                     inverseColumn: null,
                     type: join.type,
                   });
@@ -178,7 +180,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           console.log("⚠️ wasm error:", e);
         }
       }, 500),
-    [wasmModule, editNode, removeNode]
+    [wasmModule, editNode, removeNode],
   );
 
   const handleCodeChanges = useCallback(
@@ -186,7 +188,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
       if (!code) return;
       debouncedCompileFromORM(code, nodes);
     },
-    [nodes]
+    [nodes],
   );
 
   const debouncedCompileToORM = useMemo(
@@ -200,11 +202,11 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
             const columns = node.data.columns.map((col) => {
               if (!col.foreignKey?.target) return col;
               const targetTable = nodes.find(
-                (target) => target.id === col.foreignKey?.target?.table
+                (target) => target.id === col.foreignKey?.target?.table,
               );
               if (!targetTable) return col;
               const targetColumn = targetTable.data.columns.find(
-                (target) => target.id === col.foreignKey?.target?.column
+                (target) => target.id === col.foreignKey?.target?.column,
               );
               if (!targetColumn) return col;
               return {
@@ -227,7 +229,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
           console.warn("⚠️ wasm error:", e);
         }
       }, 500),
-    [wasmModule]
+    [wasmModule],
   );
 
   useEffect(() => {

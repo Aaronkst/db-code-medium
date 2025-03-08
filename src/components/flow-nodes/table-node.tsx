@@ -130,8 +130,8 @@ function TableNodeComponent({
         <div className="relative z-20">
           <Input
             type="text"
-            value={data.name}
-            onChange={(e) => editNode(id, { name: e.target.value })}
+            value={data.dbName}
+            onChange={(e) => editNode(id, { dbName: e.target.value })}
             autoFocus
             className="nodrag"
           />

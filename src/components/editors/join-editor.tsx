@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Input } from "../ui/input";
 
 export function JoinEditor() {
   const {
@@ -55,12 +56,13 @@ export function JoinEditor() {
     if (!nodes.length || !editingJoin) return;
 
     const targetNode = nodes.find(
-      (node) => node.id === editingJoin.target?.table
+      (node) => node.id === editingJoin.target?.table,
     );
 
     return targetNode;
   }, [nodes, editingJoin]);
 
+  // TODO: add an inverse column from the target table.
   const handleFormSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
@@ -93,11 +95,11 @@ export function JoinEditor() {
       });
 
       const targetCol = targetTable.data.columns.find(
-        (col) => col.id === editingJoin.target?.column
+        (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
 
       const sourceColumn = currentNode.data.columns.find(
-        (col) => col.foreignKey?.id === editingJoin.id
+        (col) => col.foreignKey?.id === editingJoin.id,
       );
 
       if (sourceColumn) {
@@ -170,7 +172,7 @@ export function JoinEditor() {
                 },
               },
             ],
-            edges
+            edges,
           );
         }
 
@@ -178,18 +180,18 @@ export function JoinEditor() {
       });
       setEditingJoin(null);
     },
-    [currentNode, targetTable, editingJoin, setNodes, setEdges]
+    [currentNode, targetTable, editingJoin, setNodes, setEdges],
   );
 
   const removeEdge = useCallback(() => {
     if (!currentNode || !targetTable || !editingJoin) return;
 
     const sourceJoinIdx = currentNode.data.joins.findIndex(
-      (join) => join.id === editingJoin.id
+      (join) => join.id === editingJoin.id,
     );
 
     const targetJoinIdx = targetTable.data.joins.findIndex(
-      (join) => join.id === editingJoin.id
+      (join) => join.id === editingJoin.id,
     );
 
     if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
@@ -207,7 +209,7 @@ export function JoinEditor() {
           { id: currentNode.id, joins: sourceJoins },
           { id: targetTable.id, joins: targetJoins },
         ],
-        nds
+        nds,
       );
     });
 
@@ -230,7 +232,7 @@ export function JoinEditor() {
       const join = node.data.joins.find(
         (join) =>
           join.id === editingJoin.id &&
-          (!join.source || join.source === node.id) // no source or self join only.
+          (!join.source || join.source === node.id), // no source or self join only.
       );
       if (join) {
         editIdx = i;
@@ -420,7 +422,19 @@ export function JoinEditor() {
               </Select>
             </div>
 
-            {/* TODO: through */}
+            {editingJoin.type === "many-to-many" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="join-through">Through</Label>
+                <Input
+                  id="join-through"
+                  type="text"
+                  value={editingJoin.through || ""}
+                  onChange={(e) =>
+                    setEditingJoin({ ...editingJoin, through: e.target.value })
+                  }
+                />
+              </div>
+            )}
 
             <DialogFooter className="flex gap-4">
               {/* <div className="flex gap-4 justify-between"> */}

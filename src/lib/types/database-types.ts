@@ -62,9 +62,13 @@ export type JoinProps = {
   onUpdate: "CASCADE" | "SET NULL" | "RESTRICT";
   through: string | null; // Join table for many-to-many
   source: string | null; // Which node is referencing the current node's columns.
-  inverseColumn: {
-    dbName: string;
+  joinColumn: {
     name: string;
+    referencedColumnName: string;
+  } | null;
+  inverseColumn: {
+    name: string;
+    referencedColumnName: string;
   } | null; // Which column is bein referenced by the junction table in a ManyToMany join scenario
   type: JoinTypes;
 };
