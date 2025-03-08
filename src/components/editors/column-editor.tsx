@@ -48,17 +48,28 @@ type ColumnEditorProps = {
 };
 
 function ColumnEditorComponent({ open = false }: ColumnEditorProps) {
-  const { editingColumn, setEditingColumn, setEditingJoin, setNodes } =
-    useContext(EditorContext);
+  const {
+    editingColumn,
+    setEditingColumn,
+    setEditingJoin,
+    setNodes,
+    database,
+  } = useContext(EditorContext);
 
-  // TODO: handle `objectId` for mongodb.
-  const dataTypeOpts = useMemo(
-    () =>
-      editingColumn?.primaryKey
-        ? [...dataTypes, { label: "UUID", value: "uuid" }]
-        : dataTypes,
-    [editingColumn?.primaryKey],
-  );
+  const dataTypeOpts = useMemo(() => {
+    if (editingColumn?.primaryKey) {
+      const primaryType = [...dataTypes, { label: "UUID", value: "uuid" }];
+      if (database === "mongodb") {
+        primaryType.push({
+          label: "ObjectID",
+          value: "objectId",
+        });
+      }
+      return primaryType;
+    } else {
+      return dataTypes;
+    }
+  }, [editingColumn?.primaryKey, database]);
 
   // apply `colum-editor` updates.
   useEffect(() => {
