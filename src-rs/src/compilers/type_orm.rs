@@ -17,18 +17,18 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
 
             if let Some(columns) = data["data"]["columns"].as_array() {
                 for column in columns {
-                    let column_name = column["name"].as_str().unwrap_or("").to_string(); // TODO: use db_name if not available.
-                    let db_name = column["dbName"].as_str().unwrap_or("").to_string();
+                    let db_name = column["dbName"].as_str().unwrap_or("");
+                    let column_name = column["name"].as_str().unwrap_or(&db_name);
                     let data_type = column["dataType"].as_str().unwrap_or("string");
                     let is_primary = column["primaryKey"].as_bool().unwrap_or(false);
                     let is_index = column["index"].as_bool().unwrap_or(false);
                     let is_unique = column["unique"].as_bool().unwrap_or(false);
                     let is_nullable = column["nullable"].as_bool().unwrap_or(false);
-                    let default_value = column["defaultValue"].as_str().unwrap_or("").to_string();
+                    let default_value = column["defaultValue"].as_str().unwrap_or("");
                     let length = column["length"].as_u64();
                     let precision = column["precision"].as_u64().unwrap_or(0);
                     let scale = column["scale"].as_u64().unwrap_or(0);
-                    let collation = column["collation"].as_str().unwrap_or("").to_string();
+                    let collation = column["collation"].as_str().unwrap_or("");
                     let is_auto_increment = column["autoIncrement"].as_bool().unwrap_or(false);
                     let select = column["select"].as_bool().unwrap_or(true);
                     let zerofill = column["zerofill"].as_bool().unwrap_or(false);
