@@ -369,7 +369,7 @@ pub fn convert_from_typeorm(program: &str) -> String {
                     let data_type = column_object["dataType"].as_str().unwrap_or("");
                     print!("data_type.len(): {}\n", data_type.len());
                     if data_type.len() < 1 {
-                        column_object["dataType"] = json!(helpers::ts_type_extractor(attribute));
+                        column_object = json!(helpers::ts_type_extractor(column_object, attribute));
                     }
 
                     table_object["data"]["columns"]

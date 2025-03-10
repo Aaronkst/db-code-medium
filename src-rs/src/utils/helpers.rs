@@ -240,30 +240,39 @@ pub fn join_table_options_extractor(mut column_object: Value, arguments: &Vec<Va
     column_object
 }
 
-pub fn ts_type_extractor(attribute: &Value) -> String {
+pub fn ts_type_extractor(mut column_object: Value, attribute: &Value) -> Value {
     if let Some(type_name) = attribute["typeAnnotation"]["typeAnnotation"]
         .get("typeName")
         .unwrap_or(&json!(""))
         .as_object()
     {
-        let mut return_type = type_name["name"].to_string();
-        return_type = trim_quotes(&return_type).to_string();
-        return_type
+        column_object["dataType"] = type_name["name"].clone();
+        column_object
     } else {
-        let mut return_type = String::new();
         if let Some(ts_type) = attribute["typeAnnotation"]["typeAnnotation"]
             .get("type")
             .unwrap()
             .as_str()
         {
             match ts_type {
-                "TSStringKeyword" => return_type = String::from("string"),
-                "TSNumberKeyword" => return_type = String::from("number"),
-                "TSBooleanKeyword" => return_type = String::from("boolean"),
-                "TSArrayType" => {} // TODO: array type in typeorm.
+                "TSStringKeyword" => column_object["dataType"] = json!("string"),
+                "TSNumberKeyword" => column_object["dataType"] = json!("number"),
+                "TSBooleanKeyword" => column_object["dataType"] = json!("boolean"),
+                "TSArrayType" => {
+                    let element_type = attribute["typeAnnotation"]["typeAnnotation"]["elementType"]
+                        .as_str()
+                        .unwrap_or("");
+                    match element_type {
+                        "TSStringKeyword" => column_object["dataType"] = json!("string"),
+                        "TSNumberKeyword" => column_object["dataType"] = json!("number"),
+                        "TSBooleanKeyword" => column_object["dataType"] = json!("boolean"),
+                        _ => column_object["dataType"] = json!("string"),
+                    }
+                    column_object["array"] = json!(true);
+                }
                 _ => {}
             }
         }
-        return_type
+        column_object
     }
 }
