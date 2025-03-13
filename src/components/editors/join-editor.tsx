@@ -78,22 +78,6 @@ export function JoinEditor() {
       )
         return;
 
-      const sourceJoins = currentNode.data.joins.map((join) => {
-        if (join.id !== editingJoin.id) return join;
-        return editingJoin;
-      });
-
-      const targetJoins = targetTable.data.joins.map((join) => {
-        if (join.id !== editingJoin.id) return join;
-        return {
-          ...join,
-          onDelete: editingJoin.onDelete,
-          onUpdate: editingJoin.onUpdate,
-          through: editingJoin.through,
-          type: editingJoin.type,
-        };
-      });
-
       const targetCol = targetTable.data.columns.find(
         (col) => col.id === editingJoin.target?.column,
       ) as ColumnProps;
@@ -113,12 +97,11 @@ export function JoinEditor() {
         const payload: UpdateNodesPayload[] = [
           {
             id: currentNode.id,
-            joins: sourceJoins,
             columns: columns,
           },
         ];
         if (currentNode.id === targetTable.id) {
-          payload.push({ id: targetTable.id, joins: targetJoins });
+          payload.push({ id: targetTable.id });
         }
         // apply join updates
         setNodes((nds) => updateNodes(payload, nds));
@@ -138,12 +121,11 @@ export function JoinEditor() {
         const payload: UpdateNodesPayload[] = [
           {
             id: currentNode.id,
-            joins: sourceJoins,
             columns: [...currentNode.data.columns, newColumn],
           },
         ];
         if (currentNode.id === targetTable.id) {
-          payload.push({ id: targetTable.id, joins: targetJoins });
+          payload.push({ id: targetTable.id });
         }
         // apply join updates
         setNodes((nds) => updateNodes(payload, nds));
@@ -186,28 +168,28 @@ export function JoinEditor() {
   const removeEdge = useCallback(() => {
     if (!currentNode || !targetTable || !editingJoin) return;
 
-    const sourceJoinIdx = currentNode.data.joins.findIndex(
-      (join) => join.id === editingJoin.id,
-    );
+    // const sourceJoinIdx = currentNode.data.joins.findIndex(
+    //   (join) => join.id === editingJoin.id,
+    // );
 
-    const targetJoinIdx = targetTable.data.joins.findIndex(
-      (join) => join.id === editingJoin.id,
-    );
+    // const targetJoinIdx = targetTable.data.joins.findIndex(
+    //   (join) => join.id === editingJoin.id,
+    // );
 
-    if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
+    // if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
 
-    const sourceJoins = [...currentNode.data.joins];
-    sourceJoins.splice(sourceJoinIdx, 1);
+    // const sourceJoins = [...currentNode.data.joins];
+    // sourceJoins.splice(sourceJoinIdx, 1);
 
-    const targetJoins = [...targetTable.data.joins];
-    targetJoins.splice(targetJoinIdx, 1);
+    // const targetJoins = [...targetTable.data.joins];
+    // targetJoins.splice(targetJoinIdx, 1);
 
     // apply join updates
     setNodes((nds) => {
       return updateNodes(
         [
-          { id: currentNode.id, joins: sourceJoins },
-          { id: targetTable.id, joins: targetJoins },
+          { id: currentNode.id },
+          { id: targetTable.id },
         ],
         nds,
       );
@@ -224,15 +206,15 @@ export function JoinEditor() {
     if (!nodes.length || !editingJoin) {
       return;
     }
-    const clonedNodes = cloneDeep(nodes);
 
     let editIdx = -1;
-    for (let i = 0; i < clonedNodes.length; i++) {
-      const node = clonedNodes[i];
-      const join = node.data.joins.find(
-        (join) =>
-          join.id === editingJoin.id &&
-          (!join.source || join.source === node.id), // no source or self join only.
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const join = node.data.columns.find(
+        (column) =>
+          column.foreignKey &&
+          column.foreignKey.id === editingJoin.id &&
+          (column.foreignKey.target?.table === node.id), // no source or self join only.
       );
       if (join) {
         editIdx = i;
@@ -240,10 +222,10 @@ export function JoinEditor() {
       }
     }
 
-    setCurrentNode(clonedNodes[editIdx]);
+    setCurrentNode(nodes[editIdx]);
   }, [nodes, editingJoin]);
 
-  if (!editingJoin) return <></>;
+  if (!editingJoin) return null;
 
   return (
     <Dialog

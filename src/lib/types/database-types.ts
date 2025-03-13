@@ -13,7 +13,6 @@ export type TableProps = {
   timestamps: boolean;
   engine: "InnoDB" | "MyISAM"; // MySQL only
   columns: ColumnProps[];
-  joins: JoinProps[];
 };
 
 export type ColumnProps = {
@@ -22,13 +21,13 @@ export type ColumnProps = {
   name: string;
   dbName: string; // underscore or pascal transformation of name
   dataType:
-    | "string"
-    | "number"
-    | "date"
-    | "json"
-    | "float"
-    | "uuid"
-    | "objectId"; // db types
+  | "string"
+  | "number"
+  | "date"
+  | "json"
+  | "float"
+  | "uuid"
+  | "objectId"; // db types
   primaryKey: boolean;
   index: boolean;
   unique: boolean;
@@ -61,7 +60,7 @@ export type JoinProps = {
   onDelete: "CASCADE" | "SET NULL" | "RESTRICT";
   onUpdate: "CASCADE" | "SET NULL" | "RESTRICT";
   through: string | null; // Join table for many-to-many
-  source: string | null; // Which node is referencing the current node's columns.
+  // source: string | null; // Which node is referencing the current node's columns.
   joinColumn: {
     name: string;
     referencedColumnName: string;

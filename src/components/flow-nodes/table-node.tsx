@@ -41,15 +41,6 @@ function TableNodeComponent({
   const [expanded, setExpanded] = useState<boolean>(true);
   const { removeNode, editNode, duplicateNode } = useContext(EditorContext);
 
-  const joinTargets = useMemo(
-    () => data.joins.filter((join) => !!join.target),
-    [data.joins],
-  );
-  const joinSources = useMemo(
-    () => data.joins.filter((join) => !!join.source),
-    [data.joins],
-  );
-
   const handleColumnChange = (idx: number, payload: Partial<ColumnProps>) => {
     // Transform payload here if necessary
     const columns = [...data.columns];
@@ -211,7 +202,7 @@ function TableNodeComponent({
       <Handle
         type="source"
         position={Position.Right}
-        id={"_source_" + joinTargets.length}
+        id={"_source_" + id}
         isConnectable
         style={{
           width: "10px",
@@ -221,7 +212,7 @@ function TableNodeComponent({
       <Handle
         type="target"
         position={Position.Left}
-        id={"_target_" + joinSources.length}
+        id={"_target_" + id}
         isConnectable
         style={{
           width: "10px",
