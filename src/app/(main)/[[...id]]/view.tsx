@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnEditor, JoinEditor } from "@/components/editors";
-import { CodeEditor } from "@/components/editors/code-editor";
+import { CodeEditor } from "@/components/editors/code-editor.v2";
 import { FlowEditor } from "@/components/editors/flow-editor";
 import { FlowMenu } from "@/components/editors/flow-menu";
 import { EditorContext } from "@/lib/context/editor-context";
@@ -91,7 +91,7 @@ function App({ project }: AppProps) {
   return (
     <>
       <FlowMenu />
-      <ColumnEditor open={showEditingPane} />
+      <ColumnEditor />
       <PanelGroup direction="horizontal" className="flex-1 min-w-screen">
         <Panel defaultSize={50} className="flex flex-col">
           <FlowEditor />

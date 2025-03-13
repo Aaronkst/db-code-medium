@@ -1,4 +1,8 @@
-import type { ColumnProps, JoinProps, TableProps } from "@/lib/types/database-types";
+import type {
+  ColumnProps,
+  JoinProps,
+  TableProps,
+} from "@/lib/types/database-types";
 import type { Edge, Node } from "@xyflow/react";
 import { nanoid } from "nanoid";
 
@@ -55,7 +59,6 @@ export const getDefaultTable = (id: string, name: string): TableProps => {
     timestamps: true,
     engine: "InnoDB", // for MySQL only
     columns: [],
-    joins: [],
   };
 
   const column = getDefaultColumn(table, {

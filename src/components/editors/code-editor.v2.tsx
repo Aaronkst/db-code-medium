@@ -86,9 +86,6 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
             const parsedNodes = JSON.parse(
               convertedNodes,
             ) as Node<TableProps>[];
-
-            console.log(parsedNodes)
-
             const parsedNodesCopy = [...parsedNodes];
 
             const newEdges: Edge<JoinProps>[] = [];
@@ -103,179 +100,157 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
               parsedNodes[idx].type = "table";
 
               let joinIdx = 0;
-              for (const { target, ...join } of [...node.data.joins]) {
-                if (target) {
-                  const targetNode = parsedNodes.find(
-                    (node) => node.id === target.table,
-                  );
+              for (const { foreignKey } of [...node.data.columns]) {
+                if (foreignKey) {
+                  const { target, ...join } = foreignKey;
+                  if (target) {
+                    const targetNode = parsedNodes.find(
+                      (node) => node.id === target.table,
+                    );
 
-                  if (targetNode) {
-                    if (join.type !== "many-to-many") {
-                      const edge: Edge<JoinProps> = {
-                        id: `${node.id} -> ${target.table}`,
-                        type:
-                          node.id === target.table
-                            ? "selfconnecting"
-                            : "smoothstep",
-                        source: node.id,
-                        target: target.table,
-                        label:
-                          node.id === target.table ? "Self Join" : join.through,
-                        markerStart: join.type.startsWith("many")
-                          ? "marker-many-start"
-                          : "marker-one",
-                        markerEnd: join.type.endsWith("many")
-                          ? "marker-many-end"
-                          : "marker-one",
-                        style: {
-                          strokeWidth: 2,
-                          stroke: "#FF0072",
-                        },
-                        data: node.data.joins[joinIdx],
-                      };
+                    if (targetNode) {
+                      if (join.type !== "many-to-many") {
+                        const edge: Edge<JoinProps> = {
+                          id: `${node.id}-${target.table}`,
+                          type:
+                            node.id === target.table
+                              ? "selfconnecting"
+                              : "smoothstep",
+                          source: node.id,
+                          target: target.table,
+                          label:
+                            node.id === target.table
+                              ? "Self Join"
+                              : join.through,
+                          markerStart: join.type.startsWith("many")
+                            ? "marker-many-start"
+                            : "marker-one",
+                          markerEnd: join.type.endsWith("many")
+                            ? "marker-many-end"
+                            : "marker-one",
+                          style: {
+                            strokeWidth: 2,
+                            stroke: "#FF0072",
+                          },
+                          data: foreignKey,
+                        };
 
-                      newEdges.push(edge);
-                      parsedNodes[idx].data.joins[joinIdx] = {
-                        ...node.data.joins[joinIdx],
-                        id: edge.id,
-                      };
-                    } else {
-                      const joinTableId = nanoid();
-                      const joinTable = {
-                        ...getDefaultTable(
-                          joinTableId,
-                          join.through || node.data.name + targetNode.data.name,
-                        ),
-                      };
+                        newEdges.push(edge);
+                        parsedNodes[idx].data.columns[joinIdx].foreignKey = {
+                          ...foreignKey,
+                          id: edge.id,
+                        };
+                      } else {
+                        const joinTableId = nanoid();
+                        const joinTable = {
+                          ...getDefaultTable(
+                            joinTableId,
+                            join.through ||
+                              node.data.name + targetNode.data.name,
+                          ),
+                        };
 
-                      const sourceCol1 = node.data.columns.find(
-                        (col) =>
-                          col.name === join.joinColumn?.referencedColumnName ||
-                          col.dbName ===
-                            join.joinColumn?.referencedColumnName ||
-                          col.primaryKey === true,
-                      );
+                        const sourceCol1 = node.data.columns.find(
+                          (col) =>
+                            col.name ===
+                              join.joinColumn?.referencedColumnName ||
+                            col.primaryKey === true,
+                        );
 
-                      const sourceCol2 = targetNode.data.columns.find(
-                        (col) =>
-                          col.name === join.joinColumn?.referencedColumnName ||
-                          col.dbName ===
-                            join.joinColumn?.referencedColumnName ||
-                          col.primaryKey === true,
-                      );
+                        const sourceCol2 = targetNode.data.columns.find(
+                          (col) =>
+                            col.name ===
+                              join.joinColumn?.referencedColumnName ||
+                            col.primaryKey === true,
+                        );
 
-                      if (!sourceCol1 || !sourceCol2) continue;
+                        if (sourceCol1 && sourceCol2) {
+                          // main join
+                          const edge1: Edge<JoinProps> = {
+                            id: `${joinTableId}-${node.id}`,
+                            type: "smoothstep",
+                            source: joinTableId,
+                            target: node.id,
+                            markerStart: "marker-many-start",
+                            markerEnd: "marker-one",
+                            style: {
+                              strokeWidth: 2,
+                              stroke: "#FF0072",
+                            },
+                          };
+                          const join1: JoinProps = {
+                            id: edge1.id,
+                            target: {
+                              table: node.id,
+                              column: sourceCol1.id,
+                            },
+                            onDelete: "CASCADE",
+                            onUpdate: "CASCADE",
+                            through: null,
+                            joinColumn: null,
+                            inverseColumn: null,
+                            type: "one-to-many",
+                          };
+                          edge1.data = join1;
 
-                      const edge1: Edge<JoinProps> = {
-                        id: `${joinTableId} -> ${node.id}`,
-                        type: "smoothstep",
-                        source: joinTableId,
-                        target: node.id,
-                        markerStart: "marker-many-start",
-                        markerEnd: "marker-one",
-                        style: {
-                          strokeWidth: 2,
-                          stroke: "#FF0072",
-                        },
-                      };
+                          // inverse join
+                          const edge2: Edge<JoinProps> = {
+                            id: `${joinTableId}-${targetNode.id}`,
+                            type: "smoothstep",
+                            source: joinTableId,
+                            target: targetNode.id,
+                            markerStart: "marker-many-start",
+                            markerEnd: "marker-one",
+                            style: {
+                              strokeWidth: 2,
+                              stroke: "#FF0072",
+                            },
+                          };
+                          const join2: JoinProps = {
+                            id: edge2.id,
+                            target: {
+                              table: targetNode.id,
+                              column: sourceCol2.id,
+                            },
+                            onDelete: "CASCADE",
+                            onUpdate: "CASCADE",
+                            through: null,
+                            joinColumn: null,
+                            inverseColumn: null,
+                            type: "one-to-many",
+                          };
+                          edge2.data = join2;
 
-                      const join1: JoinProps = {
-                        id: edge1.id,
-                        target: {
-                          table: node.id,
-                          column: sourceCol1.id,
-                        },
-                        onDelete: "CASCADE",
-                        onUpdate: "CASCADE",
-                        through: null,
-                        source: null,
-                        joinColumn: null,
-                        inverseColumn: null,
-                        type: "one-to-many",
-                      };
+                          // append foreignKeys
+                          const col1 = getDefaultColumn(joinTable, {
+                            foreignKey: join1,
+                          });
+                          const col2 = getDefaultColumn(joinTable, {
+                            foreignKey: join2,
+                          });
+                          joinTable.columns.push(col1, col2);
 
-                      const edge2: Edge<JoinProps> = {
-                        id: `${joinTableId} -> ${targetNode.id}`,
-                        type: "smoothstep",
-                        source: joinTableId,
-                        target: targetNode.id,
-                        markerStart: "marker-many-start",
-                        markerEnd: "marker-one",
-                        style: {
-                          strokeWidth: 2,
-                          stroke: "#FF0072",
-                        },
-                      };
+                          const joinNode = {
+                            id: joinTableId,
+                            position: { x: 0, y: 0 },
+                            // position: getMidpoint(
+                            //   node.position,
+                            //   targetNode.position,
+                            // ),
+                            type: "table",
+                            data: joinTable,
+                          };
 
-                      const join2: JoinProps = {
-                        id: edge2.id,
-                        target: null,
-                        onDelete: "CASCADE",
-                        onUpdate: "CASCADE",
-                        through: null,
-                        source: node.id,
-                        joinColumn: null,
-                        inverseColumn: null,
-                        type: "one-to-many",
-                      };
-
-                      const col1 = getDefaultColumn(joinTable, {
-                        foreignKey: join1,
-                      });
-                      const col2 = getDefaultColumn(joinTable, {
-                        foreignKey: join1,
-                      });
-
-                      joinTable.joins.push(join1, join2);
-                      joinTable.columns.push(col1, col2);
-
-                      const joinNode = {
-                        id: joinTableId,
-                        position: {x: 0, y: 0},
-                        // position: getMidpoint(
-                        //   node.position,
-                        //   targetNode.position,
-                        // ),
-                        type: "table",
-                        data: joinTable,
-                      };
-
-                      newEdges.push(edge1, edge2);
-                      parsedNodes[idx].data.joins.splice(joinIdx, 1);
-                      parsedNodes.push(joinNode);
+                          newEdges.push(edge1, edge2);
+                          parsedNodes.push(joinNode);
+                        }
+                      }
                     }
                   }
                 }
                 joinIdx++;
               }
               idx++;
-            }
-
-            for (const edge of newEdges) {
-              const targetTableIdx = parsedNodes.findIndex(
-                (node) => node.id === edge.target,
-              );
-              const sourceNode = parsedNodes.find(
-                (node) => node.id === edge.source,
-              );
-              if (targetTableIdx > -1 && sourceNode) {
-                const join = sourceNode.data.joins.find(
-                  (join) => join.id === edge.id,
-                );
-                if (join) {
-                  parsedNodes[targetTableIdx].data.joins.push({
-                    id: edge.id,
-                    target: null,
-                    onDelete: join.onDelete,
-                    onUpdate: join.onUpdate,
-                    through: join.through,
-                    source: sourceNode.id,
-                    joinColumn: null,
-                    inverseColumn: null,
-                    type: join.type,
-                  });
-                }
-              }
             }
 
             setEdges((eds) => {
@@ -308,7 +283,12 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
         try {
           let parsedNodes = cloneDeep(nodes);
           parsedNodes = parsedNodes.map((node) => {
-            if (!node.data.joins.length) return node;
+            // find if foreign keys exist and return early if unecessary.
+            const foreignKeys = node.data.columns.filter(
+              (col) => !!col.foreignKey,
+            );
+            if (foreignKeys.length === 0) return node;
+
             const columns = node.data.columns.map((col) => {
               if (!col.foreignKey?.target) return col;
               const targetTable = nodes.find(

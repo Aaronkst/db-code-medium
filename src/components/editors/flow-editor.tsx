@@ -63,11 +63,11 @@ function FlowEditorComponent() {
         const id = change?.id || "";
 
         for (const node of nodes) {
-          const findJoin = node.data.joins
-            .filter((join) => !join.source)
-            .find((join) => join.id === id);
+          const findJoin = node.data.columns.find(
+            (column) => column.foreignKey?.id === id,
+          );
           if (findJoin) {
-            join = findJoin;
+            join = findJoin.foreignKey;
             break;
           }
         }
@@ -77,43 +77,27 @@ function FlowEditorComponent() {
       if (change?.type === "remove") {
         const joinId = change.id;
 
-        const splitId = joinId.split("-");
-        const currentNodeId = splitId[0].split("_source")[0];
-        const targetNodeId = splitId[0].split("_source")[1];
+        const currentNodeId = joinId.split("-")[0];
 
         const currentNode = nodes.find(
           (node) => node.data.id === currentNodeId,
         );
-        const targetTable = nodes.find((node) => node.data.id === targetNodeId);
 
-        if (!currentNode || !targetTable) return;
+        if (!currentNode) return;
 
-        const sourceJoinIdx = currentNode.data.joins.findIndex(
-          (join) => join.id === joinId,
+        const sourceJoinIdx = currentNode.data.columns.findIndex(
+          (column) => column.foreignKey?.id === joinId,
         );
 
-        const targetJoinIdx = targetTable.data.joins.findIndex(
-          (join) => join.id === joinId,
-        );
+        if (sourceJoinIdx < 0) return;
 
-        if (sourceJoinIdx < 0 || targetJoinIdx < 0) return;
-
-        const sourceJoins = [...currentNode.data.joins];
-        sourceJoins.splice(sourceJoinIdx, 1);
-
-        const targetJoins = [...targetTable.data.joins];
-        targetJoins.splice(targetJoinIdx, 1);
+        const sourceColumns = [...currentNode.data.columns];
+        sourceColumns.splice(sourceJoinIdx, 1);
 
         // apply join updates
-        setNodes((nds) => {
-          return updateNodes(
-            [
-              { id: currentNode.id, joins: sourceJoins },
-              { id: targetTable.id, joins: targetJoins },
-            ],
-            nds,
-          );
-        });
+        setNodes((nds) =>
+          updateNodes({ id: currentNode.id, columns: sourceColumns }, nds),
+        );
       }
 
       setEdges((eds) => applyEdgeChanges(changes, eds));
@@ -122,68 +106,10 @@ function FlowEditorComponent() {
   );
   const onConnect: OnConnect = useCallback((connection) => {
     let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
-    const baseEdgeId = `${connection.source} -> ${connection.target}`;
+    const baseEdgeId = `${connection.source}-${connection.target}`;
 
     let sourceNode: Node<TableProps> | null = null;
     let targetNode: Node<TableProps> | null = null;
-
-    setNodes((nds) => {
-      sourceNode = nds.find((node) => node.id === connection.source) || null;
-      targetNode = nds.find((node) => node.id === connection.target) || null;
-      if (!sourceNode || !targetNode) return nds;
-
-      applyEdgeEffects = true;
-
-      const newJoin: JoinProps = {
-        id: baseEdgeId,
-        target: {
-          table: connection.target,
-          column:
-            targetNode.data.columns.find((col) => col.primaryKey || col.unique)
-              ?.id || "",
-        },
-        source: null,
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-        through: null,
-        type: "one-to-one",
-        joinColumn: null,
-        inverseColumn: null,
-      };
-
-      if (sourceNode.id === targetNode.id) {
-        // self join.
-        newJoin.source === sourceNode.id;
-        return updateNodes(
-          { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
-          nds,
-        );
-      }
-      // other join.
-      return updateNodes(
-        [
-          { id: sourceNode.id, joins: [...sourceNode.data.joins, newJoin] },
-          {
-            id: targetNode.id,
-            joins: [
-              ...targetNode.data.joins,
-              {
-                id: baseEdgeId,
-                target: null,
-                source: connection.source,
-                onDelete: "CASCADE",
-                onUpdate: "CASCADE",
-                through: null,
-                type: "one-to-one",
-                joinColumn: null,
-                inverseColumn: null,
-              },
-            ],
-          },
-        ],
-        nds,
-      );
-    });
 
     if (!applyEdgeEffects || !targetNode || !sourceNode) return;
 
@@ -217,7 +143,6 @@ function FlowEditorComponent() {
         table: connection.target,
         column: "",
       },
-      source: null,
       onDelete: "CASCADE",
       onUpdate: "CASCADE",
       through: null,
