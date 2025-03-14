@@ -80,24 +80,24 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                         }
 
                         if join_type != "many-to-many" {
-                            // Join column options
-                            column_decorator.push_str(&format!(
-                                    "@{}(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                                    join_type,
-                                    target_table,
-                                    target_table.to_lowercase(),
-                                    target_table.to_lowercase(),
-                                    target_column,
-                                    on_delete,
-                                    on_update
-                                ));
+                            // Join table options
+                            // column_decorator.push_str(&format!(
+                            //         "@{}(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                            //         join_type,
+                            //         target_table,
+                            //         target_table.to_lowercase(),
+                            //         target_table.to_lowercase(),
+                            //         target_column,
+                            //         on_delete,
+                            //         on_update
+                            //     ));
 
-                            // Join column
-                            // TODO: refer to https://orkhan.gitbook.io/typeorm/docs/relations#jointable-options
-                            column_decorator.push_str(&format!(
-                                "    @JoinColumn({{ name: \"{}\", referencedColumnName: \"{}\" }})",
-                                db_name, target_column
-                            ));
+                            // // Join table
+                            // // https://orkhan.gitbook.io/typeorm/docs/relations#jointable-options
+                            // column_decorator.push_str(&format!(
+                            //     "    @JoinTable({{ name: \"{}\", referencedColumnName: \"{}\" }})",
+                            //     db_name, target_column
+                            // ));
                         } else {
                             // Join table options
                             column_decorator.push_str(&format!(

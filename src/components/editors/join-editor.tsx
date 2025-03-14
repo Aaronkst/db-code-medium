@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { EditorContext } from "@/lib/context/editor-context";
-import { getDefaultColumn } from "@/lib/flow-editors/helpers";
+import { getDefaultColumn, joinTables } from "@/lib/flow-editors/helpers";
 import {
   deleteEdges,
   deselectEdges,
@@ -12,7 +12,7 @@ import type {
   JoinProps,
   TableProps,
 } from "@/lib/types/database-types";
-import { type Node, applyEdgeChanges } from "@xyflow/react";
+import { type Node, addEdge, applyEdgeChanges } from "@xyflow/react";
 import { cloneDeep } from "lodash";
 import { CheckIcon, TrashIcon } from "lucide-react";
 import {
@@ -77,79 +77,102 @@ export function JoinEditor() {
         (col) => col.foreignKey?.id === editingJoin.id,
       );
 
-      if (sourceColumn) {
-        const columns = currentNode.data.columns.map((col) => {
-          if (col.id !== sourceColumn.id) return col;
-          return {
-            ...sourceColumn,
-            foreignKey: editingJoin,
-          };
-        });
-        const payload: UpdateNodesPayload[] = [
-          {
-            id: currentNode.id,
-            columns: columns,
-          },
-        ];
-        if (currentNode.id === targetNode.id) {
-          payload.push({ id: targetNode.id });
+      let needsRemove: boolean = false;
+
+      if (editingJoin.type === "many-to-many") {
+        // TODO: remove foreign key if exist from `currentNode`
+        const joinTableRelt = joinTables(editingJoin, currentNode, targetNode);
+        if (joinTableRelt) {
+          const { edge1, edge2, joinNode } = joinTableRelt;
+          setEdges((eds) => {
+            const addEdge1 = addEdge(edge1, eds);
+            return addEdge(edge2, addEdge1);
+          });
+          setNodes((nds) => [...nds, joinNode]);
+          needsRemove = true;
         }
-        // apply join updates
-        setNodes((nds) => updateNodes(payload, nds));
       } else {
-        const newColumn = getDefaultColumn(currentNode.data, {
-          name: targetNode.data.name?.toLowerCase() || targetNode.data.id,
-          dbName:
-            (targetNode.data.name?.toLowerCase() || targetNode.data.id) + "_id",
-          dataType: targetCol.dataType,
-          length: targetCol.length,
-          precision: targetCol.precision,
-          scale: targetCol.scale,
-          collation: targetCol.collation,
-          foreignKey: editingJoin,
-        });
-        const payload: UpdateNodesPayload[] = [
-          {
-            id: currentNode.id,
-            columns: [...currentNode.data.columns, newColumn],
-          },
-        ];
-        if (currentNode.id === targetNode.id) {
-          payload.push({ id: targetNode.id });
+        if (sourceColumn) {
+          const columns = currentNode.data.columns.map((col) => {
+            if (col.id !== sourceColumn.id) return col;
+            return {
+              ...sourceColumn,
+              foreignKey: editingJoin,
+            };
+          });
+          const payload: UpdateNodesPayload[] = [
+            {
+              id: currentNode.id,
+              columns: columns,
+            },
+          ];
+          if (currentNode.id === targetNode.id) {
+            payload.push({ id: targetNode.id });
+          }
+          // apply join updates
+          setNodes((nds) => updateNodes(payload, nds));
+        } else {
+          const newColumn = getDefaultColumn(currentNode.data, {
+            name: targetNode.data.name?.toLowerCase() || targetNode.data.id,
+            dbName:
+              (targetNode.data.name?.toLowerCase() || targetNode.data.id) +
+              "_id",
+            dataType: targetCol.dataType,
+            length: targetCol.length,
+            precision: targetCol.precision,
+            scale: targetCol.scale,
+            collation: targetCol.collation,
+            foreignKey: editingJoin,
+          });
+          const payload: UpdateNodesPayload[] = [
+            {
+              id: currentNode.id,
+              columns: [...currentNode.data.columns, newColumn],
+            },
+          ];
+          if (currentNode.id === targetNode.id) {
+            payload.push({ id: targetNode.id });
+          }
+          // apply join updates
+          setNodes((nds) => updateNodes(payload, nds));
+          setEditingColumn(newColumn); // open column editor with the new foreign key
         }
-        // apply join updates
-        setNodes((nds) => updateNodes(payload, nds));
-        setEditingColumn(newColumn); // open column editor with the new foreign key
       }
 
-      // deselect edge
-      setEdges((edges) => {
-        edges = deselectEdges(editingJoin.id, edges);
-        const origEdge = edges.find(({ id }) => id === editingJoin.id);
-        if (origEdge) {
-          edges = applyEdgeChanges(
-            [
-              {
-                id: editingJoin.id,
-                type: "replace",
-                item: {
-                  ...origEdge,
-                  markerStart: editingJoin.type.startsWith("many")
-                    ? "marker-many-start"
-                    : "marker-one",
-                  markerEnd: editingJoin.type.endsWith("many")
-                    ? "marker-many-end"
-                    : "marker-one",
-                  data: editingJoin!,
+      if (needsRemove) {
+        // remove edge
+        setEdges((edges) => deleteEdges(editingJoin.id, edges));
+      } else {
+        // deselect edge
+        setEdges((edges) => {
+          edges = deselectEdges(editingJoin.id, edges);
+          const origEdge = edges.find(({ id }) => id === editingJoin.id);
+          if (origEdge) {
+            edges = applyEdgeChanges(
+              [
+                {
+                  id: editingJoin.id,
+                  type: "replace",
+                  item: {
+                    ...origEdge,
+                    markerStart: editingJoin.type.startsWith("many")
+                      ? "marker-many-start"
+                      : "marker-one",
+                    markerEnd: editingJoin.type.endsWith("many")
+                      ? "marker-many-end"
+                      : "marker-one",
+                    data: editingJoin!,
+                  },
                 },
-              },
-            ],
-            edges,
-          );
-        }
+              ],
+              edges,
+            );
+          }
 
-        return edges;
-      });
+          return edges;
+        });
+      }
+
       setEditingJoin(null);
     },
     [currentNode, targetNode, editingJoin, setNodes, setEdges],
@@ -202,6 +225,7 @@ export function JoinEditor() {
     setCurrentNode(nodes[editIdx]);
   }, [nodes, editingJoin]);
 
+  // TODO: join column and inverse column for `many-to-many` join.
   return (
     <Dialog
       open={!!editingJoin}
