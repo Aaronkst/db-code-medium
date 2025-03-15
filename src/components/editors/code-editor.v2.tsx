@@ -122,6 +122,8 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                               : "smoothstep",
                           source: node.id,
                           target: target.table,
+                          sourceHandle: "source",
+                          targetHandle: "target",
                           label:
                             node.id === target.table
                               ? "Self Join"

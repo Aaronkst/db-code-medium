@@ -44,6 +44,7 @@ import { Input } from "../ui/input";
 export function JoinEditor() {
   const {
     nodes,
+    edges,
     setNodes,
     setEdges,
     editingJoin,
@@ -65,6 +66,8 @@ export function JoinEditor() {
   const handleFormSubmit = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
+      // @ts-expect-error: Typing error for `e.target`
+      if (e.target.tagName.toLowerCase() !== "button") return;
 
       if (!editingJoin || !editingJoin.target || !currentNode || !targetNode)
         return;
@@ -80,7 +83,6 @@ export function JoinEditor() {
       let needsRemove: boolean = false;
 
       if (editingJoin.type === "many-to-many") {
-        // TODO: remove foreign key if exist from `currentNode`
         const joinTableRelt = joinTables(editingJoin, currentNode, targetNode);
         if (joinTableRelt) {
           const { edge1, edge2, joinNode } = joinTableRelt;
@@ -88,7 +90,33 @@ export function JoinEditor() {
             const addEdge1 = addEdge(edge1, eds);
             return addEdge(edge2, addEdge1);
           });
-          setNodes((nds) => [...nds, joinNode]);
+          setNodes((nds) => {
+            let nodes = cloneDeep(nds);
+            if (sourceColumn) {
+              const nodeIdx = nodes.findIndex(
+                (node) => node.id === sourceColumn.table,
+              );
+              if (nodeIdx > -1) {
+                const node = nodes[nodeIdx];
+                const editedColumns = [...node.data.columns];
+
+                const toRemove = editedColumns.findIndex(
+                  (col) => col.id === sourceColumn.id,
+                );
+
+                editedColumns.splice(toRemove, 1);
+
+                nodes[nodeIdx] = {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    columns: editedColumns,
+                  },
+                };
+              }
+            }
+            return [...nodes, joinNode];
+          });
           needsRemove = true;
         }
       } else {
@@ -203,29 +231,18 @@ export function JoinEditor() {
   }, [currentNode, targetNode, editingJoin, setNodes, setEdges]);
 
   useEffect(() => {
-    if (!nodes.length || !editingJoin) {
+    if (!nodes.length || !editingJoin || !edges.length) {
       return;
     }
 
-    let editIdx = -1;
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      const join = node.data.columns.find(
-        (column) =>
-          column.foreignKey &&
-          column.foreignKey.id === editingJoin.id &&
-          column.foreignKey.target?.table === node.id, // no source or self join only.
-      );
-      if (join) {
-        editIdx = i;
-        break;
-      }
-    }
+    const edge = edges.find((edge) => edge.id === editingJoin.id);
+    if (!edge) return;
 
-    setCurrentNode(nodes[editIdx]);
-  }, [nodes, editingJoin]);
+    const node = nodes.find((node) => node.id === edge.source);
 
-  // TODO: join column and inverse column for `many-to-many` join.
+    setCurrentNode(node);
+  }, [nodes, editingJoin, edges]);
+
   return (
     <Dialog
       open={!!editingJoin}
@@ -248,132 +265,6 @@ export function JoinEditor() {
           </DialogHeader>
           {currentNode && (
             <form onClick={handleFormSubmit} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="target-table">Target Table</Label>
-                <Select
-                  value={editingJoin.target?.table}
-                  onValueChange={(e) => {
-                    setEditingJoin({
-                      ...editingJoin,
-                      target: {
-                        table: e,
-                        column: editingJoin.target?.column || "",
-                      },
-                    });
-                  }}
-                >
-                  <SelectTrigger type="reset" id="target-table">
-                    <SelectValue placeholder="Target table"></SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nodes.map((target, idx) => (
-                      <SelectItem
-                        key={target.data.id}
-                        value={target.data.id}
-                        className="cursor-pointer"
-                      >
-                        {target.data.name || target.data.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {targetNode && (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="target-col">Data Type</Label>
-                  <span className="block text-xs">
-                    The foreign key to reference from{" "}
-                    {targetNode.data.name || targetNode.data.id}
-                  </span>
-                  <Select
-                    value={editingJoin.target?.column}
-                    onValueChange={(e) => {
-                      setEditingJoin({
-                        ...editingJoin,
-                        target: {
-                          column: e,
-                          table: editingJoin.target?.table || "",
-                        },
-                      });
-                    }}
-                  >
-                    <SelectTrigger type="reset" id="target-col">
-                      <SelectValue placeholder="Target column"></SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {targetNode.data.columns
-                        .filter((col) => !!col.primaryKey || !!col.unique)
-                        .map((target, idx) => (
-                          <SelectItem
-                            key={target.id}
-                            value={target.id}
-                            className="cursor-pointer"
-                          >
-                            {target.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="on-delete">On Delete</Label>
-                <Select
-                  value={editingJoin.onDelete}
-                  onValueChange={(e) => {
-                    setEditingJoin({
-                      ...editingJoin,
-                      onDelete: e as JoinProps["onDelete"],
-                    });
-                  }}
-                >
-                  <SelectTrigger type="reset" id="on-delete">
-                    <SelectValue placeholder="On delete behaviour"></SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="RESTRICT" className="cursor-pointer">
-                      RESTRICT
-                    </SelectItem>
-                    <SelectItem value="CASCADE" className="cursor-pointer">
-                      CASCADE
-                    </SelectItem>
-                    <SelectItem value="SET NULL" className="cursor-pointer">
-                      SET NULL
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="on-update">On Update</Label>
-                <Select
-                  value={editingJoin.onUpdate}
-                  onValueChange={(e) => {
-                    setEditingJoin({
-                      ...editingJoin,
-                      onUpdate: e as JoinProps["onDelete"],
-                    });
-                  }}
-                >
-                  <SelectTrigger type="reset" id="on-update">
-                    <SelectValue placeholder="On update behaviour"></SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="RESTRICT" className="cursor-pointer">
-                      RESTRICT
-                    </SelectItem>
-                    <SelectItem value="CASCADE" className="cursor-pointer">
-                      CASCADE
-                    </SelectItem>
-                    <SelectItem value="SET NULL" className="cursor-pointer">
-                      SET NULL
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="flex flex-col gap-2">
                 <Label htmlFor="join-type">Join Type</Label>
                 <Select
@@ -405,27 +296,23 @@ export function JoinEditor() {
                 </Select>
               </div>
 
-              {editingJoin.type === "many-to-many" && (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="join-through">Through</Label>
-                  <Input
-                    id="join-through"
-                    type="text"
-                    value={editingJoin.through || ""}
-                    onChange={(e) =>
-                      setEditingJoin({
-                        ...editingJoin,
-                        through: e.target.value,
-                      })
-                    }
+              {targetNode &&
+                (editingJoin.type === "many-to-many" ? (
+                  <JoinTableOptions
+                    currentNode={currentNode}
+                    targetNode={targetNode}
                   />
-                </div>
-              )}
+                ) : (
+                  <JoinColumnOptions
+                    currentNode={currentNode}
+                    targetNode={targetNode}
+                  />
+                ))}
 
               <DialogFooter className="flex gap-4">
                 <Button type="submit">
                   <CheckIcon size="0.8rem" />
-                  <span>Save</span>
+                  Save
                 </Button>
                 <Button
                   size="icon"
@@ -441,5 +328,281 @@ export function JoinEditor() {
         </DialogContent>
       )}
     </Dialog>
+  );
+}
+
+type JoinOptionProps = {
+  currentNode: Node<TableProps>;
+  targetNode: Node<TableProps>;
+};
+
+function JoinColumnOptions({ currentNode, targetNode }: JoinOptionProps) {
+  const { nodes, editingJoin, setEditingJoin } = useContext(EditorContext);
+
+  if (!editingJoin) return null;
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="target-table">Target Table</Label>
+        <Select
+          value={editingJoin.target?.table}
+          onValueChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              target: {
+                table: e,
+                column: editingJoin.target?.column || "",
+              },
+            });
+          }}
+        >
+          <SelectTrigger type="reset" id="target-table">
+            <SelectValue placeholder="Target table"></SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {nodes.map((target, idx) => (
+              <SelectItem
+                key={target.data.id}
+                value={target.data.id}
+                className="cursor-pointer"
+              >
+                {target.data.name || target.data.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {targetNode && (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="target-col">Target Column</Label>
+          <span className="block text-xs">
+            The foreign key to reference from{" "}
+            {targetNode.data.name || targetNode.data.id}
+          </span>
+          <Select
+            value={editingJoin.target?.column}
+            onValueChange={(e) => {
+              setEditingJoin({
+                ...editingJoin,
+                target: {
+                  column: e,
+                  table: editingJoin.target?.table || "",
+                },
+              });
+            }}
+          >
+            <SelectTrigger type="reset" id="target-col">
+              <SelectValue placeholder="Target column"></SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {targetNode.data.columns
+                .filter((col) => !!col.primaryKey || !!col.unique)
+                .map((target, idx) => (
+                  <SelectItem
+                    key={target.id}
+                    value={target.id}
+                    className="cursor-pointer"
+                  >
+                    {target.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="on-delete">On Delete</Label>
+        <Select
+          value={editingJoin.onDelete}
+          onValueChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              onDelete: e as JoinProps["onDelete"],
+            });
+          }}
+        >
+          <SelectTrigger type="reset" id="on-delete">
+            <SelectValue placeholder="On delete behaviour"></SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="RESTRICT" className="cursor-pointer">
+              RESTRICT
+            </SelectItem>
+            <SelectItem value="CASCADE" className="cursor-pointer">
+              CASCADE
+            </SelectItem>
+            <SelectItem value="SET NULL" className="cursor-pointer">
+              SET NULL
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="on-update">On Update</Label>
+        <Select
+          value={editingJoin.onUpdate}
+          onValueChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              onUpdate: e as JoinProps["onDelete"],
+            });
+          }}
+        >
+          <SelectTrigger type="reset" id="on-update">
+            <SelectValue placeholder="On update behaviour"></SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="RESTRICT" className="cursor-pointer">
+              RESTRICT
+            </SelectItem>
+            <SelectItem value="CASCADE" className="cursor-pointer">
+              CASCADE
+            </SelectItem>
+            <SelectItem value="SET NULL" className="cursor-pointer">
+              SET NULL
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+}
+
+function JoinTableOptions({ currentNode, targetNode }: JoinOptionProps) {
+  const { editingJoin, setEditingJoin } = useContext(EditorContext);
+
+  if (!editingJoin) return null;
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="join-through">Through</Label>
+        <Input
+          id="join-through"
+          type="text"
+          value={editingJoin.through || ""}
+          onChange={(e) =>
+            setEditingJoin({
+              ...editingJoin,
+              through: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="join-through">Source Name</Label>
+        <Input
+          id="join-through"
+          type="text"
+          value={editingJoin.joinColumn?.name || ""}
+          onChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              joinColumn: {
+                name: e.target.value,
+                referencedColumnName:
+                  editingJoin.joinColumn?.referencedColumnName || "",
+              },
+            });
+          }}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="source-col">Source Column</Label>
+        <span className="block text-xs">
+          The foreign key to reference from{" "}
+          {targetNode.data.name || targetNode.data.id}
+        </span>
+        <Select
+          value={editingJoin.joinColumn?.referencedColumnName}
+          onValueChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              joinColumn: {
+                referencedColumnName: e,
+                name: editingJoin.joinColumn?.name || "",
+              },
+            });
+          }}
+        >
+          <SelectTrigger type="reset" id="source-col">
+            <SelectValue placeholder="Target column"></SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {currentNode.data.columns
+              .filter((col) => !!col.primaryKey || !!col.unique)
+              .map((target, idx) => (
+                <SelectItem
+                  key={target.id}
+                  value={target.id}
+                  className="cursor-pointer"
+                >
+                  {target.name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="join-through">Target Name</Label>
+        <Input
+          id="join-through"
+          type="text"
+          value={editingJoin.inverseColumn?.name || ""}
+          onChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              inverseColumn: {
+                name: e.target.value,
+                referencedColumnName:
+                  editingJoin.inverseColumn?.referencedColumnName || "",
+              },
+            });
+          }}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="target-col">Target Column</Label>
+        <span className="block text-xs">
+          The foreign key to reference from{" "}
+          {targetNode.data.name || targetNode.data.id}
+        </span>
+        <Select
+          value={editingJoin.inverseColumn?.referencedColumnName}
+          onValueChange={(e) => {
+            setEditingJoin({
+              ...editingJoin,
+              inverseColumn: {
+                referencedColumnName: e,
+                name: editingJoin.inverseColumn?.name || "",
+              },
+            });
+          }}
+        >
+          <SelectTrigger type="reset" id="target-col">
+            <SelectValue placeholder="Target column"></SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {targetNode.data.columns
+              .filter((col) => !!col.primaryKey || !!col.unique)
+              .map((target, idx) => (
+                <SelectItem
+                  key={target.id}
+                  value={target.id}
+                  className="cursor-pointer"
+                >
+                  {target.name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
   );
 }

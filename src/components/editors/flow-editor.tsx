@@ -83,21 +83,21 @@ function FlowEditorComponent() {
           (node) => node.data.id === currentNodeId,
         );
 
-        if (!currentNode) return;
+        if (currentNode) {
+          const sourceJoinIdx = currentNode.data.columns.findIndex(
+            (column) => column.foreignKey?.id === joinId,
+          );
 
-        const sourceJoinIdx = currentNode.data.columns.findIndex(
-          (column) => column.foreignKey?.id === joinId,
-        );
+          if (sourceJoinIdx > -1) {
+            const sourceColumns = [...currentNode.data.columns];
+            sourceColumns.splice(sourceJoinIdx, 1);
 
-        if (sourceJoinIdx < 0) return;
-
-        const sourceColumns = [...currentNode.data.columns];
-        sourceColumns.splice(sourceJoinIdx, 1);
-
-        // apply join updates
-        setNodes((nds) =>
-          updateNodes({ id: currentNode.id, columns: sourceColumns }, nds),
-        );
+            // apply join updates
+            setNodes((nds) =>
+              updateNodes({ id: currentNode.id, columns: sourceColumns }, nds),
+            );
+          }
+        }
       }
 
       setEdges((eds) => applyEdgeChanges(changes, eds));
@@ -105,24 +105,20 @@ function FlowEditorComponent() {
     [nodes],
   );
   const onConnect: OnConnect = useCallback((connection) => {
-    let applyEdgeEffects: boolean = false; // append the new edge connection only if the nodes update succeeds
-    const baseEdgeId = `${connection.source}-${connection.target}`;
-
-    let sourceNode: Node<TableProps> | null = null;
-    let targetNode: Node<TableProps> | null = null;
-
-    if (!applyEdgeEffects || !targetNode || !sourceNode) return;
+    const edgeId = `${connection.source}-${connection.target}`;
 
     setEdges((eds) =>
       addEdge(
         {
-          id: baseEdgeId,
+          id: edgeId,
           type:
             connection.source === connection.target
               ? "selfconnecting"
               : "smoothstep",
           source: connection.source,
           target: connection.target,
+          sourceHandle: "source",
+          targetHandle: "target",
           label: connection.source === connection.target ? "Self Join" : "",
           markerEnd: {
             type: MarkerType.Arrow,
@@ -138,7 +134,7 @@ function FlowEditorComponent() {
       ),
     );
     setEditingJoin({
-      id: baseEdgeId,
+      id: edgeId,
       target: {
         table: connection.target,
         column: "",

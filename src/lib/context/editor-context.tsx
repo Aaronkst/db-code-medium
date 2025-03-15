@@ -16,7 +16,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { deleteNodes, updateNodes } from "../flow-editors/nodes";
+import { deleteEdges, deleteNodes, updateNodes } from "../flow-editors/nodes";
 import { nanoid } from "nanoid";
 import { getDefaultTable } from "../flow-editors/helpers";
 
@@ -81,6 +81,13 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 
   // custom node crud
   function removeNode(id: string) {
+    setEdges((eds) => {
+      const ids = eds
+        .filter((edge) => edge.source === id || edge.target === id)
+        .map((edge) => edge.id);
+      return deleteEdges(ids, eds);
+    });
+
     setNodes((nds) => deleteNodes(id, nds));
   }
   function editNode(id: string, data: Partial<TableProps>) {
@@ -104,7 +111,7 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
           id: node.id,
           selected: node.id === nodeId,
         })),
-        nodes
+        nodes,
       );
     });
   }
@@ -131,7 +138,7 @@ const EditorProvider = ({ children }: { children: React.ReactNode }) => {
           id: node.id,
           selected: node.id === nodeId,
         })),
-        nodes
+        nodes,
       );
     });
   }

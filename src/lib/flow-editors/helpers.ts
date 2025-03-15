@@ -53,7 +53,7 @@ export const getDefaultTable = (id: string, name: string): TableProps => {
   const table: TableProps = {
     id: id.toString(),
     name: name,
-    dbName: "",
+    dbName: name,
     primaryKey: "",
     description: "",
     timestamps: true,
@@ -92,6 +92,8 @@ export const joinTables = (
   node: Node<TableProps>,
   targetNode: Node<TableProps>,
 ) => {
+  console.log("joining tables..", join);
+
   const joinTableId = nanoid();
   const joinTable = {
     ...getDefaultTable(
@@ -108,7 +110,7 @@ export const joinTables = (
 
   const sourceCol2 = targetNode.data.columns.find(
     (col) =>
-      col.name === join.joinColumn?.referencedColumnName ||
+      col.name === join.inverseColumn?.referencedColumnName ||
       col.primaryKey === true,
   );
 
@@ -119,6 +121,8 @@ export const joinTables = (
       type: "smoothstep",
       source: joinTableId,
       target: node.id,
+      sourceHandle: "source",
+      targetHandle: "target",
       markerStart: "marker-many-start",
       markerEnd: "marker-one",
       style: {
@@ -137,7 +141,7 @@ export const joinTables = (
       through: null,
       joinColumn: null,
       inverseColumn: null,
-      type: "one-to-many",
+      type: "many-to-one",
     };
     edge1.data = join1;
 
@@ -147,6 +151,8 @@ export const joinTables = (
       type: "smoothstep",
       source: joinTableId,
       target: targetNode.id,
+      sourceHandle: "source",
+      targetHandle: "target",
       markerStart: "marker-many-start",
       markerEnd: "marker-one",
       style: {
@@ -165,7 +171,7 @@ export const joinTables = (
       through: null,
       joinColumn: null,
       inverseColumn: null,
-      type: "one-to-many",
+      type: "many-to-one",
     };
     edge2.data = join2;
 
@@ -173,9 +179,18 @@ export const joinTables = (
     const col1 = getDefaultColumn(joinTable, {
       foreignKey: join1,
     });
+    if (join.joinColumn?.name) {
+      col1.name = join.joinColumn.name;
+      col1.dbName = join.joinColumn.name;
+    }
     const col2 = getDefaultColumn(joinTable, {
       foreignKey: join2,
     });
+    if (join.inverseColumn?.name) {
+      col2.name = join.inverseColumn.name;
+      col2.dbName = join.inverseColumn.name;
+    }
+
     joinTable.columns.push(col1, col2);
 
     const joinNode = {

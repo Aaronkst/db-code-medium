@@ -202,7 +202,7 @@ function TableNodeComponent({
       <Handle
         type="source"
         position={Position.Right}
-        id={"_source_" + id}
+        id="source"
         isConnectable
         style={{
           width: "10px",
@@ -212,7 +212,7 @@ function TableNodeComponent({
       <Handle
         type="target"
         position={Position.Left}
-        id={"_target_" + id}
+        id="target"
         isConnectable
         style={{
           width: "10px",
