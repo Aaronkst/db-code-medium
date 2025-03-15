@@ -10,8 +10,10 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
     let mut entity_codes: Vec<String> = Vec::new();
     if let Some(json_array) = helpers::parse_json(json_str).as_array_mut() {
         for data in json_array {
-            let table_name = data["data"]["name"].as_str().unwrap_or("Entity");
-            let mut entity_code = format!("@Entity()\nexport class {} {{\n", table_name);
+            let table_name = data["data"]["dbName"].as_str().unwrap_or("Entity");
+            let class_name = data["data"]["name"].as_str().unwrap_or(table_name);
+            let mut entity_code =
+                format!("@Entity({})\nexport class {} {{\n", table_name, class_name);
 
             let mut column_codes: Vec<String> = Vec::new();
 
@@ -80,10 +82,24 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                         }
 
                         if join_type != "many-to-many" {
+                            // Join Decorator
+                            column_decorator.push_str(&format!(
+                                    "@{}(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
+                                    join_type,
+                                    target_table,
+                                    target_table.to_lowercase(),
+                                    target_table.to_lowercase(),
+                                    target_column,
+                                    on_delete,
+                                    on_update
+                                ));
+                            // Column Options
+                            column_decorator
+                                .push_str(&format!("    @JoinTable({{ name: \"{}\" }})", db_name));
+                        } else {
                             // Join table options
                             // column_decorator.push_str(&format!(
-                            //         "@{}(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                            //         join_type,
+                            //         "@ManyToMany(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
                             //         target_table,
                             //         target_table.to_lowercase(),
                             //         target_table.to_lowercase(),
@@ -92,37 +108,19 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                             //         on_update
                             //     ));
 
-                            // // Join table
-                            // // https://orkhan.gitbook.io/typeorm/docs/relations#jointable-options
+                            // let through = fk["through"]
+                            //     .as_str()
+                            //     .unwrap_or(&format!(
+                            //         "{}_{}",
+                            //         table_name.to_lowercase(),
+                            //         target_table.to_lowercase()
+                            //     ))
+                            //     .to_string();
+
                             // column_decorator.push_str(&format!(
                             //     "    @JoinTable({{ name: \"{}\", referencedColumnName: \"{}\" }})",
-                            //     db_name, target_column
+                            //     through, target_column
                             // ));
-                        } else {
-                            // Join table options
-                            column_decorator.push_str(&format!(
-                                    "@ManyToMany(() => {}, ({}) => {}.{}, {{ onDelete: \"{}\", onUpdate: \"{}\" }})\n",
-                                    target_table,
-                                    target_table.to_lowercase(),
-                                    target_table.to_lowercase(),
-                                    target_column,
-                                    on_delete,
-                                    on_update
-                                ));
-
-                            let through = fk["through"]
-                                .as_str()
-                                .unwrap_or(&format!(
-                                    "{}_{}",
-                                    table_name.to_lowercase(),
-                                    target_table.to_lowercase()
-                                ))
-                                .to_string();
-
-                            column_decorator.push_str(&format!(
-                                "    @JoinTable({{ name: \"{}\", referencedColumnName: \"{}\" }})",
-                                through, target_column
-                            ));
                         }
                         if is_index {
                             column_decorator.push_str("\n    @Index()");
@@ -226,7 +224,7 @@ pub fn convert_to_typeorm(json_str: &str) -> String {
                 }
                 let joined_column_codes = column_codes.join("\n\n");
 
-                entity_code.push_str(&format!("{}\n", joined_column_codes));
+                entity_code.push_str(&format!("{}", joined_column_codes));
                 entity_code.push('}');
             }
             entity_codes.push(entity_code)

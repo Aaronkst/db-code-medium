@@ -122,11 +122,11 @@ function FlowEditorComponent() {
           label: connection.source === connection.target ? "Self Join" : "",
           markerEnd: {
             type: MarkerType.Arrow,
-            color: "#FF0072",
+            color: "#1d4ed8",
           },
           style: {
             strokeWidth: 2,
-            stroke: "#FF0072",
+            stroke: "#1d4ed8",
           },
           animated: true,
         },
@@ -159,7 +159,7 @@ function FlowEditorComponent() {
             strokeWidth: 2,
             stroke:
               nodeIds.includes(edge.source) || nodeIds.includes(edge.target)
-                ? "#FF0072"
+                ? "#1d4ed8"
                 : undefined,
           },
           animated:

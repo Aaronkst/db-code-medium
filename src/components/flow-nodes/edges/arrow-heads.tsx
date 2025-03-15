@@ -14,13 +14,13 @@ export function MarkerOne() {
         >
           <path
             d="M 20 5 20 35"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 30 5 30 35"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
@@ -48,23 +48,23 @@ export function MarkerManyStart() {
             cx="27"
             cy="20"
             r="8"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 20 20 0 35"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 20 20 0 20"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
-          <path d="M 20 20 0 5" stroke="#FF0072" strokeWidth="2" fill="white" />
+          <path d="M 20 20 0 5" stroke="#1d4ed8" strokeWidth="2" fill="white" />
         </marker>
       </defs>
     </svg>
@@ -89,25 +89,25 @@ export function MarkerManyEnd() {
             cx="13"
             cy="20"
             r="8"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 20 20 40 35"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 20 20 40 20"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />
           <path
             d="M 20 20 40 5"
-            stroke="#FF0072"
+            stroke="#1d4ed8"
             strokeWidth="2"
             fill="white"
           />

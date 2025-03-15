@@ -91,8 +91,8 @@ function TableNodeComponent({
   return (
     <div
       className={cn(
-        "rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table",
-        selected ? "border border-[#FF0072]" : "",
+        "rounded-md bg-white dark:bg-zinc-950 border dark:text-white group/table overflow-hidden",
+        selected ? "border border-[#1d4ed8]" : "",
       )}
     >
       {/* <Button
@@ -105,6 +105,16 @@ function TableNodeComponent({
       </Button> */}
       <NodeToolbar isVisible={selected} position={Position.Bottom}>
         <div className="flex gap-2">
+          <Button
+            size="icon"
+            onClick={() =>
+              editNode(id, {
+                columns: [...data.columns, getDefaultColumn(data)],
+              })
+            }
+          >
+            <Plus size="0.8rem" />
+          </Button>
           <Button size="icon" onClick={() => duplicateNode(id)}>
             <Copy size="0.8rem" />
           </Button>
@@ -117,16 +127,16 @@ function TableNodeComponent({
           </Button>
         </div>
       </NodeToolbar>
-      <div className="p-3 overflow-hidden">
+      <div className="overflow-hidden">
         <div className="relative z-20">
           <Input
             type="text"
             value={data.dbName}
             onChange={(e) => editNode(id, { dbName: e.target.value })}
             autoFocus
-            className="nodrag"
+            className="bg-blue-700 text-white rounded-none ring-0 focus-visible:ring-0 border-0"
           />
-          <Button
+          {/* <Button
             size="icon"
             onClick={() => setExpanded(!expanded)}
             variant="ghost"
@@ -139,17 +149,16 @@ function TableNodeComponent({
                 transform: `rotate(${expanded ? "-90deg" : "90deg"})`,
               }}
             />
-          </Button>
+          </Button> */}
         </div>
         <div
-          className={`ease-in-out z-0 mt-3 nowheel ${
+          className={`ease-in-out z-0 p-3 nowheel ${
             expanded
               ? "max-h-[500px] overflow-y-auto"
               : "max-h-0 overflow-hidden"
           }`}
         >
           <div className="flex flex-col gap-3">
-            <hr />
             {data.columns.map((column, idx) => (
               <div className="flex items-center gap-1" key={idx}>
                 <span>{renderIcon(column)}</span>
@@ -184,18 +193,6 @@ function TableNodeComponent({
                 </div>
               </div>
             ))}
-            <hr />
-            <Button
-              className="nodrag"
-              // size="icon"
-              onClick={() =>
-                editNode(id, {
-                  columns: [...data.columns, getDefaultColumn(data)],
-                })
-              }
-            >
-              <Plus size="0.8rem" />
-            </Button>
           </div>
         </div>
       </div>

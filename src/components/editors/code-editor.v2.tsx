@@ -136,7 +136,7 @@ function CodeEditorComponent({ className, wasmModule }: CodeEditorProps) {
                             : "marker-one",
                           style: {
                             strokeWidth: 2,
-                            stroke: "#FF0072",
+                            stroke: "#1d4ed8",
                           },
                           data: foreignKey,
                         };

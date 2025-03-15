@@ -127,7 +127,7 @@ export const joinTables = (
       markerEnd: "marker-one",
       style: {
         strokeWidth: 2,
-        stroke: "#FF0072",
+        stroke: "#1d4ed8",
       },
     };
     const join1: JoinProps = {
@@ -157,7 +157,7 @@ export const joinTables = (
       markerEnd: "marker-one",
       style: {
         strokeWidth: 2,
-        stroke: "#FF0072",
+        stroke: "#1d4ed8",
       },
     };
     const join2: JoinProps = {

@@ -97,7 +97,7 @@ function ColumnEditorComponent() {
       }}
     >
       {editingColumn && (
-        <SheetContent side="left" className="overflow-y-auto">
+        <SheetContent side="right" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Column Editor</SheetTitle>
           </SheetHeader>
